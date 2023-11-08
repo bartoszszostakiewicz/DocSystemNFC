@@ -8,7 +8,9 @@ build/
 
 *./caches/
 caches/
-
+deamon/
+native/
+wrapper
 
 # Local configuration file (sdk path, etc)
 local.properties
