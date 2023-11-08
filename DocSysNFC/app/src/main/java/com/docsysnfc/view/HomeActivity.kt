@@ -77,8 +77,7 @@ class SendActivity : ComponentActivity(), NfcAdapter.CreateNdefMessageCallback {
         NfcAdapter.getDefaultAdapter(this)
     }
 
-//    var pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent,
-//        PendingIntent.FLAG_MUTABLE)
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -133,20 +132,10 @@ class SendActivity : ComponentActivity(), NfcAdapter.CreateNdefMessageCallback {
         return NdefMessage(
             arrayOf(
                 createMime("application/vnd.com.docnfc", text.toByteArray())
+
             )
         )
     }
-
-    public override fun onPause() {
-        super.onPause()
-        //nfcAdapter?.disableForegroundDispatch(this)
-    }
-
-    public override fun onResume() {
-        super.onResume()
-        //nfcAdapter?.enableForegroundDispatch(this, pendingIntent, null, null)
-    }
-
 
 }
 
