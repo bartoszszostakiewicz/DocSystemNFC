@@ -109,6 +109,7 @@ class SendActivity : ComponentActivity(), NfcAdapter.CreateNdefMessageCallback {
                     homeViewModel = homeViewModel,
                     fileSelectionLauncher,
                     context = this@SendActivity
+
                 )
 
             }
