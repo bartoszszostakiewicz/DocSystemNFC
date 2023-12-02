@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.nfc.NdefMessage
+import android.nfc.NdefRecord
 import android.nfc.NdefRecord.createMime
 import android.nfc.NfcAdapter
 import android.nfc.NfcEvent
@@ -20,6 +21,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Column
@@ -57,96 +59,110 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.docsysnfc.R
+import com.docsysnfc.ui.theme.backgroundCollor
+import com.docsysnfc.ui.theme.backgroundCollor2
+import com.docsysnfc.ui.theme.buttonsColor
+import com.docsysnfc.ui.theme.tilesColor
 import com.docsysnfc.viewmodel.HomeViewModel
 import com.google.firebase.storage.FirebaseStorage
 import kotlin.math.roundToInt
 
 
-val buttonsColor = Color(0xFF276194)
-val backgroundCollor = Color(0xFFDEF2FD)
-val tilesColor = Color(0xFF6CB7F9)
-val backgroundCollor2 = Color(0xFFDFE9F1)
 
 
-class SendActivity : ComponentActivity(), NfcAdapter.CreateNdefMessageCallback {
+//class SendActivity : ComponentActivity(), NfcAdapter.CreateNdefMessageCallback {
+//
+//
+//    private val homeViewModel by viewModels<HomeViewModel>()
+//
+//    private val nfcAdapter: NfcAdapter? by lazy {
+//        NfcAdapter.getDefaultAdapter(this)
+//    }
+//
+//    private val fileSelectionLauncher =
+//        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+//            if (result.resultCode == Activity.RESULT_OK) {
+//                val data: Intent? = result.data
+//                val selectedFileUri: Uri? = data?.data
+//                if (selectedFileUri != null) {
+//                    homeViewModel.addFile(selectedFileUri)
+//                }
+//            }
+//        }
+//
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
+//
+//
+//
+//
+//        setContent {
+//            Column(
+//                modifier = Modifier
+//                    .background(backgroundCollor)
+//            ) {
+//
+//                val selectedFiles by homeViewModel.modelSelectedFiles.collectAsState()
+//
+//
+//                Spacer(modifier = Modifier.weight(1f, true))
+//
+//                SwipableTiles(
+//                    selectedFiles = selectedFiles,
+//                    context = this@SendActivity,
+//                    homeViewModel = homeViewModel
+//                )
+//
+//                Spacer(modifier = Modifier.weight(1f, true))
+//
+//                ChooseFileButton(
+//                    homeViewModel = homeViewModel,
+//                    fileSelectionLauncher,
+//                    context = this@SendActivity
+//
+//                )
+//
+//            }
+//        }
+//    }
+//
+//
+//
+//    override fun createNdefMessage(p0: NfcEvent?): NdefMessage {
+//        val text = "Beam me up, Android!\n\n" +
+//                "Beam Time: " + System.currentTimeMillis()
+//        return NdefMessage(
+//            arrayOf(
+//                createMime("application/vnd.com.docnfc", text.toByteArray())
+//
+//            )
+//        )
+//    }
+//
+//}
 
 
-    private val homeViewModel by viewModels<HomeViewModel>()
+class SendActivity : AppCompatActivity() {
 
-    private val nfcAdapter: NfcAdapter? by lazy {
-        NfcAdapter.getDefaultAdapter(this)
-    }
-
-//    var pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent,
-//        PendingIntent.FLAG_MUTABLE)
+    private var nfcAdapter: NfcAdapter? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_my_nfc)
 
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
 
-
-
-        setContent {
-            Column(
-                modifier = Modifier
-                    .background(backgroundCollor)
-            ) {
-
-                val selectedFiles by homeViewModel.modelSelectedFiles.collectAsState()
-
-
-                Spacer(modifier = Modifier.weight(1f, true))
-
-                SwipableTiles(
-                    selectedFiles = selectedFiles,
-                    context = this@SendActivity,
-                    homeViewModel = homeViewModel
-                )
-
-                Spacer(modifier = Modifier.weight(1f, true))
-
-                ChooseFileButton(
-                    homeViewModel = homeViewModel,
-                    fileSelectionLauncher,
-                    context = this@SendActivity
-                )
-
-            }
-        }
-    }
-
-    private val fileSelectionLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                val data: Intent? = result.data
-                val selectedFileUri: Uri? = data?.data
-                if (selectedFileUri != null) {
-                    homeViewModel.addFile(selectedFileUri)
-                }
-            }
+        if (nfcAdapter == null || !nfcAdapter!!.isEnabled) {
+            // Informuj użytkownika o braku wsparcia NFC lub że NFC jest wyłączone
+            return
         }
 
-    override fun createNdefMessage(p0: NfcEvent?): NdefMessage {
-        val text = "Beam me up, Android!\n\n" +
-                "Beam Time: " + System.currentTimeMillis()
-        return NdefMessage(
-            arrayOf(
-                createMime("application/vnd.com.docnfc", text.toByteArray())
-            )
-        )
+        val uri = Uri.parse("http://www.example.com")
+        val uriRecord = NdefRecord.createUri(uri)
+        val ndefMessage = NdefMessage(arrayOf(uriRecord))
+
+        nfcAdapter?.setNdefPushMessage(ndefMessage, this)
     }
-
-    public override fun onPause() {
-        super.onPause()
-        //nfcAdapter?.disableForegroundDispatch(this)
-    }
-
-    public override fun onResume() {
-        super.onResume()
-        //nfcAdapter?.enableForegroundDispatch(this, pendingIntent, null, null)
-    }
-
-
 }
 
 
@@ -235,7 +251,7 @@ fun SwipableTiles(selectedFiles: List<Uri>, context: Context, homeViewModel: Hom
                         Text(
                             text = "Name: ${
                                 homeViewModel.getNameFile(
-                                    context as Activity,
+                                  
                                     selectedFiles[index]
                                 )
                             }", fontWeight = FontWeight.Bold
@@ -243,7 +259,7 @@ fun SwipableTiles(selectedFiles: List<Uri>, context: Context, homeViewModel: Hom
                         Text(
                             text = "Type: ${
                                 homeViewModel.getTypeFile(
-                                    context,
+                                   
                                     selectedFiles[index]
                                 )
                             }", color = Color.Gray
@@ -251,7 +267,7 @@ fun SwipableTiles(selectedFiles: List<Uri>, context: Context, homeViewModel: Hom
                         Text(
                             text = "Size: ${
                                 homeViewModel.getSizeFile(
-                                    context,
+                                    
                                     selectedFiles[index]
                                 )
                             }MB", color = Color.Gray
@@ -296,10 +312,7 @@ fun ChooseFileButton(
 ) {
     Button(
         onClick = {
-            homeViewModel.chooseFile(
-                activity = context as Activity,
-                launcher = fileSelectionLauncher
-            )
+            homeViewModel.chooseFile()
         },
         modifier = Modifier
             .padding(16.dp)

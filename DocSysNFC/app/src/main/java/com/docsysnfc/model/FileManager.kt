@@ -1,11 +1,14 @@
 package com.docsysnfc.model
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.icu.text.DecimalFormat
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 
 
 class FileManager(
@@ -31,10 +34,13 @@ class FileManager(
      * @return uri file
      */
 
-    fun chooseFile(activity: Activity, launcher: ActivityResultLauncher<Intent>) {
+    fun chooseFile(activity: ActivityResultContracts) {
+
+
+
         val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "*/*"
-        launcher.launch(intent)
+        //launcher.launch(intent)
     }
 
     /**
@@ -43,7 +49,7 @@ class FileManager(
      * @return size file in bytes
      */
 
-    fun getSizeFile(context: Activity, uri: Uri): Double {
+    fun getSizeFile(context: Context, uri: Uri): Double {
         val contentResolver = context.contentResolver
         val fileDescriptor = contentResolver.openFileDescriptor(uri, "r")
         val sizeInBytes = fileDescriptor?.use {
@@ -61,7 +67,7 @@ class FileManager(
      * @return name file
      */
 
-    fun getNameFile(context: Activity, uri: Uri, extension: Boolean): String {
+    fun getNameFile(context: Context, uri: Uri, extension: Boolean): String {
         val contentResolver = context.contentResolver
         val cursor = contentResolver.query(uri, null, null, null, null)
         val nameIndex = cursor?.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -87,7 +93,7 @@ class FileManager(
      * @return type file
      */
 
-    fun getTypeFile(context: Activity, uri: Uri): String {
+    fun getTypeFile(context: Context, uri: Uri): String {
         return getNameFile(context, uri, extension = true).substringAfterLast(".")
     }
 

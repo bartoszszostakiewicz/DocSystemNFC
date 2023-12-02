@@ -4,16 +4,21 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.ViewModel
 import com.docsysnfc.model.FileManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 import kotlin.concurrent.fixedRateTimer
 import kotlin.random.Random
 
-class HomeViewModel() : ViewModel() {
+class HomeViewModel @Inject constructor(
+    private val context: Context,
+    private val activityResultContracts: ActivityResultContracts
+
+) : ViewModel() {
 
     private val fileManager = FileManager()
 
@@ -51,20 +56,20 @@ class HomeViewModel() : ViewModel() {
     }
 
 
-    fun getSizeFile(context: Activity, uri: Uri): Double {
+    fun getSizeFile(uri: Uri): Double {
         return fileManager.getSizeFile(context, uri)
     }
 
-    fun getNameFile(context: Activity, uri: Uri): String {
+    fun getNameFile(uri: Uri): String {
         return fileManager.getNameFile(context, uri, extension = false)
     }
 
-    fun getTypeFile(context: Activity, uri: Uri): String {
+    fun getTypeFile(uri: Uri): String {
         return fileManager.getTypeFile(context, uri)
     }
 
-    fun chooseFile(activity: Activity, launcher: ActivityResultLauncher<Intent>) {
-        fileManager.chooseFile(activity, launcher)
+    fun chooseFile() {
+        fileManager.chooseFile(activityResultContracts)
 
         _modelSelectedFiles.update { fileManager.getFiles() }
     }
