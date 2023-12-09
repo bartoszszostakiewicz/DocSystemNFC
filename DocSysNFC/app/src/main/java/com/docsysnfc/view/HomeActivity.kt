@@ -161,7 +161,7 @@ class SendActivity : AppCompatActivity() {
         val uriRecord = NdefRecord.createUri(uri)
         val ndefMessage = NdefMessage(arrayOf(uriRecord))
 
-        nfcAdapter?.setNdefPushMessage(ndefMessage, this)
+//        nfcAdapter?.setNdefPushMessage(ndefMessage, this)
     }
 }
 
