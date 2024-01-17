@@ -22,10 +22,10 @@ class LoginActivity : ComponentActivity() {
         auth = FirebaseAuth.getInstance()
 
         //check if user is already logged in
-//        if (auth.currentUser != null) {
+        if (auth.currentUser != null) {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
-//        }
+        }
 
         setContent {
             Column (

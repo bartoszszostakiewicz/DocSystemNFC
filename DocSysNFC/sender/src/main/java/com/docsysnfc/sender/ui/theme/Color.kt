@@ -13,7 +13,7 @@ val Pink40 = Color(0xFF7D5260)
 
 
 val buttonsColor = Color(0xFF276194)
-val backgroundCollor = Color(0xFFDEF2FD)
+val backgroundColor = Color(0xFFDEF2FD)
 val tilesColor = Color(0xFF6CB7F9)
-val backgroundCollor2 = Color(0xFFDFE9F1)
+val backgroundColor2 = Color(0xFFDFE9F1)
 
