@@ -50,7 +50,7 @@ import com.docsysnfc.sender.ui.theme.backgroundCollor
 import com.docsysnfc.sender.ui.theme.backgroundCollor2
 import com.docsysnfc.sender.ui.theme.buttonsColor
 import com.docsysnfc.sender.ui.theme.tilesColor
-import com.docsysnfc.sender.viewmodel.HomeViewModel
+import com.docsysnfc.sender.HomeViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import kotlin.math.roundToInt
@@ -225,7 +225,7 @@ fun SwipeableTiles(selectedFiles: List<File>, context: Context, homeViewModel: H
                     ),
                 )
 
-                ChoosenFile(selectedFile = selectedFiles[index].uri)
+                ChoosenFile(selectedFile = selectedFiles[index], viewModel = homeViewModel)
 
             }
         }
@@ -262,32 +262,15 @@ fun ChooseFileButton(
 
 @Composable
 fun ChoosenFile(
-    selectedFile: Uri?,
-    firebaseStorage: FirebaseStorage = FirebaseStorage.getInstance()
+    selectedFile: File?,
+    viewModel: HomeViewModel
 ) {
-    val fileName = selectedFile?.lastPathSegment ?: "No file selected"
+    val fileName = selectedFile?.url.toString() ?: "No file selected"
 
     Button(
         onClick = {
 
-            var auth = FirebaseAuth.getInstance()
-
-            Log.d("TAG123", "onCreate: ${auth.currentUser}")
-
-            val uriFile = Uri.parse("$selectedFile") // file path
-            val fileRef = firebaseStorage.reference.child("test.jpg")
-
-            fileRef.putFile(uriFile)
-                .addOnSuccessListener { taskSnapshot ->
-                    // Get a URL to the uploaded content
-                    val downloadUrl: Uri = taskSnapshot.uploadSessionUri!!
-                    Log.d("TAG123", "onCreatexx: $downloadUrl")
-                }
-                .addOnFailureListener {
-                    // Handle unsuccessful uploads
-                    // ...
-                    Log.d("TAG123", "onCreatexd: $it")
-                }
+                  Log.d("TAG123", "linkztondhuehui: ${selectedFile?.url.toString()}")
 
         },
         modifier = Modifier

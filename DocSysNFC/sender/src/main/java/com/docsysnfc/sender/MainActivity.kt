@@ -12,7 +12,6 @@ import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import com.docsysnfc.sender.model.NFCtest
 import com.docsysnfc.sender.ui.SendScreen
-import com.docsysnfc.sender.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
 
 

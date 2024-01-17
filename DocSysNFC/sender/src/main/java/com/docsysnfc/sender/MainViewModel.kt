@@ -1,13 +1,17 @@
-package com.docsysnfc.sender.viewmodel
+package com.docsysnfc.sender
 
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
+import com.docsysnfc.sender.model.CloudComm
 import com.docsysnfc.sender.model.File
 import com.docsysnfc.sender.model.FileManager
+import com.docsysnfc.sender.model.UrlCallback
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.net.URL
 
 class HomeViewModel (
     app: Application,
@@ -18,7 +22,8 @@ class HomeViewModel (
     private val context = getApplication<Application>().applicationContext
 
 
-    private var fileManager = FileManager()
+    private val fileManager = FileManager()
+    private val cloudComm = CloudComm()
 
     //change list uri
 
@@ -48,21 +53,30 @@ class HomeViewModel (
         _startServiceEvent.value = null
     }
 
-//    fun initService() {
-//        _startServiceEvent.value = "chat.openai.com"
-//    }
+
 
     private fun addFile(uri: Uri) {
         val currentList = _modelSelectedFiles.value.toMutableList()
         currentList.add(fileManager.toFile(uri, context))
 
         fileManager.addFile(uri, context)
+        cloudComm.uploadFile(fileManager.toFile(uri, context))
+//        cloudComm.setURLToFile(currentList.last())
+
+        cloudComm.setURLToFile(currentList.last(), object : UrlCallback {
+            override fun onUrlAvailable(url: String) {
+                // Tutaj możesz używać uzyskanego URL, na przykład przypisując go do _activeURL
+                _activeURL.value = url
+                _startServiceEvent.value = url
+            }
+        })
 
         _modelSelectedFiles.value = currentList
 
 
-        _activeURL.value = uri.toString()
-        _startServiceEvent.value = uri.toString()
+        //try to set in different way
+//        _activeURL.value = uri.toString()
+
     }
 //
 //    fun getFiles(): MutableList<File> {

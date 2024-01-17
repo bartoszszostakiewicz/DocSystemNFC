@@ -5,6 +5,7 @@ import android.icu.text.DecimalFormat
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.google.type.Date
+import java.net.URL
 
 
 class FileManager(
@@ -12,7 +13,7 @@ class FileManager(
 ) {
 
     fun toFile(uri: Uri, context: Context): File {
-        return File(getNameFile(context, uri, false), uri, "", getSizeFile(context, uri), getTypeFile(context, uri))
+        return File(getNameFile(context, uri, false), uri,"", getSizeFile(context, uri), getTypeFile(context, uri))
     }
 
     private val selectedFiles = mutableListOf<File>()
