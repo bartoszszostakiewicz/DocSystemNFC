@@ -1,6 +1,0 @@
-<resources>
-    <string name="app_name">DocSysNFC</string>
-    <!-- values-pl/strings.xml -->
-    <string name="login"> login </string>
-    <string name="password">password </string>
-</resources>
