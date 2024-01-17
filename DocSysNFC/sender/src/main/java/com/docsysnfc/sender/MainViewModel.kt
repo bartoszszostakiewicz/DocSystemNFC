@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.net.URL
 
-class HomeViewModel (
+class MainViewModel (
     app: Application,
 //    private var fileManager: FileManager = FileManager(), // jak jest tutaj to wywala apke !!!!!!!!!!!
 ) : AndroidViewModel(app) {

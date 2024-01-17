@@ -7,6 +7,7 @@ import android.os.Vibrator
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Column
@@ -44,22 +45,67 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.docsysnfc.R
+import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.File
-import com.docsysnfc.sender.ui.theme.backgroundCollor
-import com.docsysnfc.sender.ui.theme.backgroundCollor2
+import com.docsysnfc.sender.ui.theme.backgroundColor
+import com.docsysnfc.sender.ui.theme.backgroundColor2
 import com.docsysnfc.sender.ui.theme.buttonsColor
 import com.docsysnfc.sender.ui.theme.tilesColor
-import com.docsysnfc.sender.HomeViewModel
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.storage.FirebaseStorage
 import kotlin.math.roundToInt
 
+
+enum class NFCSysScreen(@StringRes val title: Int) {
+    Start(title = R.string.app_name),
+    Send(title = R.string.send),
+    SendDetails(title = R.string.send_details),
+    Receive(title = R.string.receive),
+}
+
+
 @Composable
-fun SendScreen(viewModel: HomeViewModel, context: Context){
+fun AppNavigation(viewModel: MainViewModel, context: Context) {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = NFCSysScreen.Send.name
+    ) {
+
+
+        composable(NFCSysScreen.Send.name) { SendScreen(navController, viewModel, context) }
+
+        composable(
+            route = "${NFCSysScreen.SendDetails.name}/{index}",
+            arguments = listOf(
+                navArgument("index") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val index = backStackEntry.arguments?.getInt("index")
+            if (index != null) {
+                SendDetailsScreen(navController, viewModel, context, index)
+            } else {
+                // Obsługa błędu, jeśli index jest null
+            }
+        }
+        composable(NFCSysScreen.Receive.name) { ReceiveScreen(navController, viewModel, context) }
+
+
+    }
+}
+
+
+@Composable
+fun SendScreen(navController: NavController,viewModel: MainViewModel, context: Context){
     Column(
         modifier = Modifier
-            .background(backgroundCollor)
+            .background(backgroundColor)
     ) {
 
         val activeUri by viewModel.urlStateFlow.collectAsState()
@@ -75,7 +121,8 @@ fun SendScreen(viewModel: HomeViewModel, context: Context){
         SwipeableTiles(
             selectedFiles = selectedFiles,
             context = context,
-            homeViewModel = viewModel
+            homeViewModel = viewModel,
+            navController = navController
         )
 
         Spacer(modifier = Modifier.weight(1f, true))
@@ -89,9 +136,10 @@ fun SendScreen(viewModel: HomeViewModel, context: Context){
 
 
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SwipeableTiles(selectedFiles: List<File>, context: Context, homeViewModel: HomeViewModel) {
+fun SwipeableTiles(selectedFiles: List<File>, context: Context, homeViewModel: MainViewModel, navController: NavController) {
     val tileWidth = 200.dp // Width of each tile
     val tileHeight = 200.dp // Height of each tile
     var isSwiping by remember { mutableStateOf(false) }
@@ -116,7 +164,7 @@ fun SwipeableTiles(selectedFiles: List<File>, context: Context, homeViewModel: H
 
     LazyRow(
         modifier = Modifier
-            .background(backgroundCollor2)
+            .background(backgroundColor2)
             .fillMaxWidth()
             .pointerInput(Unit) {
                 detectTransformGestures { _, _, _, offset ->
@@ -225,7 +273,7 @@ fun SwipeableTiles(selectedFiles: List<File>, context: Context, homeViewModel: H
                     ),
                 )
 
-                ChoosenFile(selectedFile = selectedFiles[index], viewModel = homeViewModel)
+                ChoosenFile(selectedFile = selectedFiles[index], viewModel = homeViewModel, navController = navController)
 
             }
         }
@@ -235,7 +283,7 @@ fun SwipeableTiles(selectedFiles: List<File>, context: Context, homeViewModel: H
 
 @Composable
 fun ChooseFileButton(
-    homeViewModel: HomeViewModel,
+    homeViewModel: MainViewModel,
 ) {
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -263,14 +311,18 @@ fun ChooseFileButton(
 @Composable
 fun ChoosenFile(
     selectedFile: File?,
-    viewModel: HomeViewModel
+    viewModel: MainViewModel,
+    navController: NavController
 ) {
-    val fileName = selectedFile?.url.toString() ?: "No file selected"
+
 
     Button(
         onClick = {
 
                   Log.d("TAG123", "linkztondhuehui: ${selectedFile?.url.toString()}")
+
+            navController.navigate("${NFCSysScreen.SendDetails.name}/${viewModel.modelSelectedFiles.value.indexOf(selectedFile)}")
+
 
         },
         modifier = Modifier
@@ -282,7 +334,7 @@ fun ChoosenFile(
         )
 
     ) {
-        Text(text = fileName)
+        Text(text = "Details")
     }
 }
 

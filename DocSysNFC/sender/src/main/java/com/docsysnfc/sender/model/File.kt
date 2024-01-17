@@ -9,6 +9,6 @@ data class File(
     val downloadLink: String,
     val size: Double,
     val type: String,
-    var url : URL? = null
+    var url: URL = URL("https://www.google.com")
 ){
 }
