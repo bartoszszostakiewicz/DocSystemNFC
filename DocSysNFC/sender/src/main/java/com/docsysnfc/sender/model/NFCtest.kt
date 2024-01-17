@@ -138,7 +138,7 @@ class NFCtest: HostApduService() {
 
         if (intent?.hasExtra("ndefMessage")!!) {
             NDEF_URI =
-                NdefMessage(createTextRecord("en", intent.getStringExtra("ndefMessage")!!, NDEF_ID))
+                NdefMessage(createTextRecord("", intent.getStringExtra("ndefMessage")!!, NDEF_ID))
 
             NDEF_URI_BYTES = NDEF_URI.toByteArray()
             NDEF_URI_LEN = fillByteArrayToFixedDimension(

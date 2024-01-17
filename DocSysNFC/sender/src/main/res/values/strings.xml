@@ -5,4 +5,7 @@
     <string name="password">password </string>
     <string name="some_description">sad</string>
     <string name="servicedesc">simple desc\n</string>
+    <string name="send">Send Screen</string>
+    <string name="send_details">Send Details</string>
+    <string name="receive">Receive Screen</string>
 </resources>

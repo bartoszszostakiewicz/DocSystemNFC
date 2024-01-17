@@ -11,8 +11,8 @@ import androidx.activity.viewModels
 import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import com.docsysnfc.sender.model.NFCtest
+import com.docsysnfc.sender.ui.AppNavigation
 import com.docsysnfc.sender.ui.SendScreen
-import com.docsysnfc.sender.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
 
 
@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
 
     private var nfcAdapter: NfcAdapter? = null
 
-    private val homeViewModel by viewModels<HomeViewModel>()
+    private val viewModel by viewModels<MainViewModel>()
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,17 +37,19 @@ class MainActivity : ComponentActivity() {
             return
         }
         lifecycleScope.launch {
-            homeViewModel.startServiceEvent.collect { ndefMessage ->
+            viewModel.startServiceEvent.collect { ndefMessage ->
                 ndefMessage?.let {
                     startNFCService(it)
                     // Resetowanie wartości po uruchomieniu usługi
-                    homeViewModel.resetServiceEvent()
+                    viewModel.resetServiceEvent()
                 }
             }
         }
 
         setContent {
-          SendScreen(viewModel = homeViewModel, context = this@MainActivity)
+
+            AppNavigation(viewModel = viewModel , context = this@MainActivity)
+
         }
     }
     private fun startNFCService(ndefMessage: String) {
@@ -64,7 +66,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        homeViewModel.setActivityVisibility(true)
+        viewModel.setActivityVisibility(true)
         getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
             putBoolean("isActivityVisible", true)
             apply()
@@ -74,7 +76,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        homeViewModel.setActivityVisibility(false)
+        viewModel.setActivityVisibility(false)
         getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
             putBoolean("isActivityVisible", false)
             apply()
