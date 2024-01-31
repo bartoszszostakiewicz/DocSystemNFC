@@ -85,4 +85,7 @@ class FileManager(
         return getNameFile(context, uri, extension = true).substringAfterLast(".")
     }
 
+
+
+
 }

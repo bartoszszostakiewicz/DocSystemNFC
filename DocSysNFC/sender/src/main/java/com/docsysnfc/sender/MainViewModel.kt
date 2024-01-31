@@ -24,6 +24,7 @@ class MainViewModel (
 
     private val fileManager = FileManager()
     private val cloudComm = CloudComm()
+    private val securityManager = SecurityManager()
 
     //change list uri
 
@@ -74,27 +75,11 @@ class MainViewModel (
         _modelSelectedFiles.value = currentList
 
 
-        //try to set in different way
-//        _activeURL.value = uri.toString()
-
     }
-//
-//    fun getFiles(): MutableList<File> {
-//        return fileManager.getFiles()
-//    }
-//
-//
-//    fun getSizeFile(uri: Uri): Double {
-//        return fileManager.getSizeFile(context, uri)
-//    }
-//
-//    fun getNameFile(uri: Uri): String {
-//        return fileManager.getNameFile(context, uri, extension = false)
-//    }
-//
-//    fun getTypeFile(uri: Uri): String {
-//        return fileManager.getTypeFile(context, uri)
-//    }
+
+    fun fileIsInCloud(file: File): Boolean {
+        return file.url != URL("https://www.google.com")
+    }
 
     fun chooseFile() {
         _modelSelectedFiles.update { fileManager.getFiles() }

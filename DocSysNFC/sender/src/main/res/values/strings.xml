@@ -8,4 +8,8 @@
     <string name="send">Send Screen</string>
     <string name="send_details">Send Details</string>
     <string name="receive">Receive Screen</string>
+    <string name="file_name">File name</string>
+    <string name="file_icon">Files</string>
+    <string name="latest_icon">Sent files\n</string>
+    <string name="settings_icon">Settings</string>
 </resources>
