@@ -1,12 +1,13 @@
 package com.docsysnfc.sender.ui
 
 import android.content.Context
-import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +21,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,22 +33,37 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.docsysnfc.R
-import com.docsysnfc.sender.MainActivity
-import com.google.firebase.auth.FirebaseAuth
+import com.docsysnfc.sender.MainViewModel
+import com.docsysnfc.sender.model.AuthenticationState
+import com.docsysnfc.sender.ui.theme.backgroundColor
+import com.docsysnfc.sender.ui.theme.blackTextColor
+import com.docsysnfc.sender.ui.theme.buttonsColor
+import com.docsysnfc.sender.ui.theme.clickableTextColor
+import com.docsysnfc.sender.ui.theme.outlineTextFieldCursorColor
+import com.docsysnfc.sender.ui.theme.outlineTextFieldFocusedBorderColor
+import com.docsysnfc.sender.ui.theme.outlineTextFieldUnfocusedBorderColor
+import com.docsysnfc.sender.ui.theme.whiteColor
 
 
 @OptIn(ExperimentalMaterial3Api::class)
-//i want set this color to background color ->
 @Composable
-fun LoginScreen(auth : FirebaseAuth, context: Context) {
+fun LoginScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
+
+    val authenticationState by viewModel.authenticationState.collectAsState()
+
+    if (viewModel.isUserAuthenticated) {
+        navController.navigate(NFCSysScreen.Home.name)
+    }
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -53,135 +72,181 @@ fun LoginScreen(auth : FirebaseAuth, context: Context) {
     var isEmailValid by remember { mutableStateOf(false) }
     var isPasswordValid by remember { mutableStateOf(false) }
 
-    /*****TO DO : get from xml strings*******/
-    val loginName  = "login"
-    val passwordName = "password"
-    /****************************************/
 
-    /*****TO DO : get from color strings*****/
-    val loginButtonColor = Color.Blue
-    val loginButtonTextColor = Color.White
+    val loginName = stringResource(id = R.string.login)
+    val passwordName = stringResource(id = R.string.password)
 
-    //val borderColor = Color.Blue
+
+    val loginButtonColor = buttonsColor
+    val loginButtonTextColor = whiteColor
 
     val bitMap = painterResource(id = R.drawable.final_logo_)
-    val backgroundColor = Color(0xFFDEF2FD)
+    val backgroundColor = backgroundColor
 
     val scrollState = rememberScrollState()
 
-    /****************************************/
-
-
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)// Thanks to this padding, the background does not spread over the entire screen, I don't want it
-            .verticalScroll(state = scrollState)
-            .background(color = backgroundColor),
-
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Image(
-            painter = bitMap ,
-            contentDescription = "Logo")
-
-        OutlinedTextField(
-            label = { Text(loginName) },
-            value = email,
-            onValueChange = {
-                email = it
-                isEmailValid = isValidEmail(email)
-
-            },
-
-            //singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            textStyle = TextStyle(color = Color.Black)
-        )
-
-
-
-        OutlinedTextField(
-            label = { Text(passwordName) },
-            value = password,
-            onValueChange = {
-                password = it
-                isPasswordValid = password.isNotEmpty()
-            },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            textStyle = TextStyle(color = Color.Black)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-
-                if (isEmailValid && isPasswordValid) {
-
-                    if (auth.signInWithEmailAndPassword(email, password).addOnCompleteListener {
-                            if (it.isSuccessful) {
-                                Log.d("qwertty", "1signInWithEmail:success")
-
-
-
-                                context.startActivity(Intent(context, MainActivity::class.java))
-
-                            } else {
-                                Log.w("qwertty", "signInWithEmail:failure", it.exception)
-                                //updateUI(null)
-                            }
-                        }.isSuccessful) {
-                    }
-
-                }
-
-
-            },
-            modifier = Modifier
-                .fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = loginButtonColor, contentColor = loginButtonTextColor)
-        ) {
-            Text("Login")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ClickableText(
-            text = buildAnnotatedString {
-                withStyle(
-                    style = SpanStyle(
-                        color = Color.Gray,
-                        textDecoration = TextDecoration.Underline
-                    )
-                ) {
-                    append("Don't remember password?")
-                }
-            },
-            onClick = {
-                /*********TODO PASSWORD RECOVERY  ***********************************/
-                /*********TODO PASSWORD RECOVERY  ***********************************/
-                /*********TODO PASSWORD RECOVERY  ***********************************/
-                /*********TODO PASSWORD RECOVERY  ***********************************/
-
-                // Handle the click action here
+    LaunchedEffect(authenticationState) {
+        when (authenticationState) {
+            AuthenticationState.SUCCESS -> {
+                Log.d("UI Event", "Authentication success")
+                navController.navigate(NFCSysScreen.Home.name)
+                // Handle success, navigate to another screen
             }
-        )
+
+            AuthenticationState.FAILURE -> {
+                //dialog authentication failed
+                Log.d("UI Event", "Authentication failed")
+                // Handle failure
+            }
+            // ... other states
+            AuthenticationState.UNKNOWN -> {
+                // Handle unknown state
+                Log.d("UI Event", "Unknown state")
+            }
+        }
+    }
+
+
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize() // Make sure to use fillMaxSize
+            .background(color = com.docsysnfc.sender.ui.theme.backgroundColor)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)// Thanks to this padding, the background does not spread over the entire screen, I don't want it
+                .verticalScroll(state = scrollState)
+                .background(color = backgroundColor),
+
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                painter = bitMap,
+                contentDescription = stringResource(R.string.logo)
+            )
+
+            CustomTextField(
+                text = email,
+                onTextChange = {
+                    email = it
+                    isEmailValid = isValidEmail(email)
+                },
+                label = loginName,
+                isTextValid = isEmailValid,
+                visualTransformation = VisualTransformation.None // Normal text field for email
+            )
+
+
+
+            CustomTextField(
+                text = password,
+                onTextChange = {
+                    password = it
+                    isPasswordValid =
+                        password.isNotEmpty() // Update your validation logic as needed
+                },
+                label = "Password",
+                isTextValid = isPasswordValid,
+                visualTransformation = PasswordVisualTransformation(),
+            )
+
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    if (isEmailValid && isPasswordValid) {
+                        viewModel.signInWithEmailAndPassword(email, password)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = loginButtonColor,
+                    contentColor = loginButtonTextColor
+                )
+            ) {
+                Text(stringResource(id = R.string.login))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                ClickableText(
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(color = clickableTextColor)) {
+                            append(stringResource(id = R.string.register_now))
+                        }
+                    },
+                    onClick = {
+                        // TODO: Handle "Register now" click here
+                        Log.d("UI Event", "Navigate to registration screen")
+                        navController.navigate(NFCSysScreen.Create.name)
+                    },
+                    modifier = Modifier.padding(end = 24.dp)
+                )
+
+                Text("|", color = Color.Gray)
+
+                ClickableText(
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(color = clickableTextColor)) {
+                            append(stringResource(id = R.string.recovery_password))
+                        }
+                    },
+                    onClick = {
+                        navController.navigate(NFCSysScreen.Recovery.name)
+                    },
+                    modifier = Modifier.padding(start = 24.dp)
+                )
+            }
+        }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CustomTextField(
+    text: String,
+    onTextChange: (String) -> Unit,
+    label: String,
+    isTextValid: Boolean? = null, // Optional argument for validity
+    visualTransformation: VisualTransformation = VisualTransformation.None, // Optional argument for visual transformation
+) {
+    OutlinedTextField(
+        value = text,
+        onValueChange = onTextChange,
+        label = { Text(label) },
+        colors = TextFieldDefaults.outlinedTextFieldColors(
+            focusedBorderColor = outlineTextFieldFocusedBorderColor,
+            unfocusedBorderColor = outlineTextFieldUnfocusedBorderColor,
+            cursorColor = outlineTextFieldCursorColor,
+            textColor = blackTextColor,
+
+            // Add error colors if you have a specific design for invalid input
+//            errorBorderColor = if (isTextValid == false) Color.Red else outlineTextFieldUnfocusedBorderColor,
+//            focusedLabelColor = if (isTextValid == false) Color.Red else outlineTextFieldFocusedBorderColor
+        ),
+        singleLine = true,
+
+        visualTransformation = visualTransformation,
+//        isError = isTextValid == false, // Show error state based on isTextValid
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    )
+}
 
 
-// Function to validate email format using regular expression
-private fun isValidEmail(email: String): Boolean {
+// Function to validate email format using regular expression \
+fun isValidEmail(email: String): Boolean {
     val emailRegex = "^[A-Za-z](.*)([@]{1})(.{1,})(\\.)(.{1,})"
     return email.matches(emailRegex.toRegex())
 }

@@ -29,10 +29,17 @@ val YellowGrey40 = Color(0xFFE6E6CC)
 val Red40 = Color(0xFFD61C1C)
 
 
-
-
 val buttonsColor = Color(0xFF276194)
 val backgroundColor = Color(0xFFDEF2FD)
 val tilesColor = Color(0xFF6CB7F9)
 val backgroundColor2 = Color(0xFFDFE9F1)
+val clickableTextColor = Color(0xFF494B4D)
+val whiteColor = Color(0xFFFFFFFF)
+val blackTextColor = Color(0xFF161515)
+val appBarColorTheme = Color(0xA153ABF0)
+val sendingFileColor = Color(0xFF69EE85)
+val fileIsNotInCloudColor = Color(0xFF532B2B)
 
+val outlineTextFieldFocusedBorderColor = Color(0xFF070606)
+val outlineTextFieldUnfocusedBorderColor = Color(0xFF4E4949)
+val outlineTextFieldCursorColor = Color(0xFFD5CECE)

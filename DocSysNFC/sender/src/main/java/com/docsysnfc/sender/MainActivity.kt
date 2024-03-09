@@ -21,9 +21,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import com.docsysnfc.R
+import com.docsysnfc.sender.model.NFCStatus
 import com.docsysnfc.sender.model.NFCtest
 import com.docsysnfc.sender.ui.AppNavigation
 import com.docsysnfc.sender.ui.SendScreen
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 
@@ -31,25 +33,12 @@ private const val TAG = "SendActivity123"
 
 class MainActivity : ComponentActivity() {
 
-    private var nfcAdapter: NfcAdapter? = null
-
     private val viewModel by viewModels<MainViewModel>()
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
-        if (nfcAdapter == null) {
-            Log.e("NFC123", "NFC is not supported on this device.")
-            showNFCNotSupportedDialog()
-            return
-        } else if (!nfcAdapter!!.isEnabled) {
-            Log.e("NFC123", "NFC is disabled.")
-            promptToEnableNFC()
-        }
 
-        // Continue with normal onCreate logic if NFC is available
         lifecycleScope.launch {
             viewModel.startServiceEvent.collect { ndefMessage ->
                 ndefMessage?.let {
@@ -60,14 +49,9 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-
             AppNavigation(viewModel = viewModel , context = this@MainActivity)
-
         }
     }
-
-
-
 
     private fun startNFCService(ndefMessage: String) {
         val intent = Intent(this, NFCtest::class.java).apply {
@@ -75,6 +59,7 @@ class MainActivity : ComponentActivity() {
         }
         startService(intent)
     }
+
 
     override fun onDestroy() {
         super.onDestroy()
@@ -106,58 +91,8 @@ class MainActivity : ComponentActivity() {
         stopService(intent)
     }
 
-
-
 }
 
 
 
-@Composable
-fun NFCNotSupportedDialog() {
-    val context = LocalContext.current
-    var showDialog by remember { mutableStateOf(true) }
-
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            text = { Text(stringResource(R.string.nfc_not_supported)) },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDialog = false
-//                        context.finish()
-                    }) {
-                    Text(stringResource(R.string.ok))
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun PromptToEnableNFCDialog() {
-    val context = LocalContext.current
-    var showDialog by remember { mutableStateOf(true) }
-
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            text = { Text(stringResource(R.string.nfc_disabled_prompt)) },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDialog = false
-                        context.startActivity(Intent(android.provider.Settings.ACTION_NFC_SETTINGS))
-                    }) {
-                    Text(stringResource(R.string.enable_nfc))
-                }
-            },
-            dismissButton = {
-                Button(onClick = { showDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
-}
 

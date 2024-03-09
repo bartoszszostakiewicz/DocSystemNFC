@@ -1,6 +1,8 @@
 package com.docsysnfc.sender.ui
 
 import android.content.Context
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -31,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -44,6 +45,9 @@ import androidx.navigation.NavController
 import com.docsysnfc.R
 import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.File
+import com.docsysnfc.sender.ui.theme.backgroundColor
+import com.docsysnfc.sender.ui.theme.fileIsNotInCloudColor
+import com.docsysnfc.sender.ui.theme.sendingFileColor
 
 fun updateNfcDataCipher(context: Context, isActive: Boolean) {
     context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
@@ -82,19 +86,27 @@ fun SendScreen(
     index: Int
 ) {
 
+    /************TODO ADD VIBRATION during sending files***************/
+
+    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    val vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
+
+    /***************************/
+
     var isCipher by rememberSaveable { mutableStateOf(false) }
 
     val file = remember { viewModel.modelSelectedFiles.value[index] }
+
+    //if animate is true, the file is ready to transfer and is in the cloud
     val animate by remember { mutableStateOf(/*viewModel.fileIsInCloud(file)*/ true) }
+
     //data is ready to transfer
     updateNfcDataTransferState(context, animate)
 
     //check public key
 
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val screenHeight = configuration.screenHeightDp.dp
-    val iconSize = screenWidth * 0.40f
+
+    val iconSize = LocalConfiguration.current.screenWidthDp.dp * 0.40f
 
     val scale = if (animate) {
         rememberInfiniteTransition(
@@ -112,7 +124,7 @@ fun SendScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (animate) Color(0xFF69EE85) else Color(0xFF532B2B))
+            .background(if (animate) sendingFileColor else fileIsNotInCloudColor)
     ) {
         Column(
             modifier = Modifier
@@ -124,7 +136,7 @@ fun SendScreen(
                 .clip(RoundedCornerShape(12))
                 .fillMaxWidth(0.9f)
                 .fillMaxHeight(0.5f)
-                .background(Color(0xFFB4E5FF))
+                .background(backgroundColor)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
@@ -151,10 +163,7 @@ fun SendScreen(
                             contentDescription = "Icon",
                             modifier = Modifier
                                 .size(iconSize)
-//                                .padding(top = 8.dp, start = 8.dp)
                         )
-
-
                     }
                 }
 
@@ -166,8 +175,8 @@ fun SendScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Start,
                         modifier = Modifier
-                            .fillMaxWidth() // Zapewnia, że `Row` wypełni dostępną szerokość
-                            .padding(8.dp)  // Dostosuj według potrzeb
+                            .fillMaxWidth()
+                            .padding(8.dp)
                     ) {
                         Column {
                             Icon(
@@ -177,7 +186,7 @@ fun SendScreen(
                                     .size(36.dp)
                             )
                             Text(
-                                text = "Encryption",
+                                text = stringResource(id = R.string.encryption),
                                 modifier = Modifier.padding(end = 8.dp)
                             )
                         }
@@ -197,11 +206,11 @@ fun SendScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Start,
                         modifier = Modifier
-                            .fillMaxWidth() // Zapewnia, że `Row` wypełni dostępną szerokość
-                            .padding(8.dp)  // Dostosuj według potrzeb
+                            .fillMaxWidth()
+                            .padding(8.dp)
                     ) {
                         Column(
-                            modifier = Modifier.weight(1f) // Column zajmuje 1 część dostępnego miejsca
+                            modifier = Modifier.weight(1f)
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.cloud11),
@@ -210,8 +219,7 @@ fun SendScreen(
                                     .size(36.dp)
                             )
                             Text(
-                                text = "Cloud",
-//
+                                text = stringResource(id = R.string.cloud),
                             )
                         }
 
@@ -220,17 +228,12 @@ fun SendScreen(
                             contentDescription = "Icon",
                             modifier = Modifier
                                 .size(36.dp)
-                                .weight(0.55f) // Icon zajmuje 1 część dostępnego miejsca
-//
+                                .weight(0.55f)
                         )
                     }
-
-
                 }
 
                 Spacer(modifier = Modifier.weight(1f, false))
-
-
             }
 
             Spacer(modifier = Modifier.weight(1f, false))
@@ -238,21 +241,20 @@ fun SendScreen(
             Row {
                 Column {
                     Text(
-                        text = stringResource(id = R.string.file_name) + ": " + file.name,
+                        text = stringResource(id = R.string.file_name) + R.string.colon + file.name,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(top = 8.dp, start = 8.dp)
                     )
 
                     Text(
-                        text = stringResource(R.string.file_size) + ": " + file.size.toString() + stringResource(
+                        text = stringResource(R.string.file_size) + R.string.colon + file.size.toString() + stringResource(
                             R.string.mb
                         ),
                         modifier = Modifier.padding(top = 8.dp, start = 8.dp)
-
                     )
                     Text(
-                        text = stringResource(R.string.file_type) + ": " + file.type,
+                        text = stringResource(R.string.file_type) + stringResource(id = R.string.colon) + file.type,
                         modifier = Modifier.padding(top = 8.dp, start = 8.dp)
                     )
                 }

@@ -4,12 +4,10 @@ package com.docsysnfc.sender.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.VibrationEffect
-import android.os.Vibrator
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,10 +34,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,34 +47,27 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.navigation.NavController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.docsysnfc.R
-import com.docsysnfc.sender.LoginActivity
 import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.File
+import com.docsysnfc.sender.model.NFCStatus
+import com.docsysnfc.sender.ui.theme.appBarColorTheme
 import com.docsysnfc.sender.ui.theme.backgroundColor
 import com.docsysnfc.sender.ui.theme.backgroundColor2
 import com.docsysnfc.sender.ui.theme.buttonsColor
 import com.docsysnfc.sender.ui.theme.tilesColor
+import com.docsysnfc.sender.ui.theme.whiteColor
 import com.google.firebase.auth.FirebaseAuth
 import kotlin.math.roundToInt
-
-
-enum class NFCSysScreen(@StringRes val title: Int) {
-    Home(title = R.string.send),
-    Send(title = R.string.send_details),
-    Receive(title = R.string.receive),
-}
 
 
 //change location of this function
@@ -86,71 +78,38 @@ fun updateNfcDataTransferState(context: Context, isActive: Boolean) {
     }
 }
 
-@Composable
-fun AppNavigation(viewModel: MainViewModel, context: Context) {
-    val navController = rememberNavController()
-
-    NavHost(
-        navController = navController,
-        startDestination = NFCSysScreen.Home.name
-    ) {
-
-
-        composable(NFCSysScreen.Home.name) { HomeScreen(navController, viewModel, context) }
-
-        composable(
-            route = "${NFCSysScreen.Send.name}/{index}",
-            arguments = listOf(
-                navArgument("index") { type = NavType.IntType }
-            )
-        ) { backStackEntry ->
-            val index = backStackEntry.arguments?.getInt("index")
-            if (index != null) {
-                SendScreen(navController, viewModel, context, index)
-            } else {
-                // Obsługa błędu, jeśli index jest null
-            }
-        }
-        composable(NFCSysScreen.Receive.name) { ReceiveScreen(navController, viewModel, context) }
-
-
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreenTopBar(title: String, context: Context) {
+fun HomeScreenTopBar(title: String, navController: NavController) {
     TopAppBar(
         title = {
             Text(
                 text = title,
                 fontWeight = FontWeight.Bold,
-                color = Color.White, // Ustaw biały lub inny kolor tekstu
-                style = MaterialTheme.typography.titleLarge // Dostosuj według potrzeb
+                color = whiteColor, 
+                style = MaterialTheme.typography.titleLarge
             )
         },
         colors = TopAppBarDefaults.smallTopAppBarColors(
-            containerColor = Color(0xA153ABF0), // Ustaw kolor tła AppBar
-            titleContentColor = Color.White // Ustaw kolor tekstu tytułu, jeśli potrzebujesz
+            containerColor = appBarColorTheme, 
+            titleContentColor = whiteColor
         ),
         actions = {
-            // Dodaj przyciski do paska aplikacji
-            LogoutButton(context = context)
-
+            LogoutButton(navController = navController)
         }
     )
 }
 
 @Composable
-fun LogoutButton(context: Context) {
+fun LogoutButton(navController: NavController) {
     Button(
         onClick = {
-                FirebaseAuth.getInstance().signOut()
-                context.startActivity(Intent(context, LoginActivity::class.java))
+            FirebaseAuth.getInstance().signOut()
+            navController.navigate(NFCSysScreen.Login.name)
         },
         modifier = Modifier,
 
-//            .padding(32.dp),
         colors = ButtonDefaults.buttonColors(
             buttonsColor,
             contentColor = Color.White
@@ -158,40 +117,34 @@ fun LogoutButton(context: Context) {
     ) {
         Icon(
             painter = painterResource(R.drawable.log_out),
-            contentDescription = "logout",
-
+            contentDescription = stringResource(id = R.string.log_out),
             )
     }
 
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwipeableTiles(
     selectedFiles: List<File>,
-    context: Context,
     homeViewModel: MainViewModel,
     navController: NavController
 ) {
 
-    val tileWidth = 200.dp // Width of each tile
-    val tileHeight = 200.dp // Height of each tile
+    val tileWidth = integerResource(id = R.integer.tileWidth).dp
+    val tileHeight = integerResource(id = R.integer.tileHeight).dp
+
+
 
 
     var isSwiping by remember { mutableStateOf(false) }
     var offsetX by remember { mutableFloatStateOf(0f) }
 
-    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    val vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
+
 
     val numberOfTiles = selectedFiles.size
 
-    // State to track whether a tile is in a special state
-    var specialTileState by remember { mutableStateOf(false) }
 
-    var specialTileIndex by remember { mutableIntStateOf(-1) }
-
-
+    val specialTileState by remember { mutableStateOf(false) }
 
 
     LazyRow(
@@ -264,7 +217,7 @@ fun SwipeableTiles(
                 Spacer(modifier = Modifier.height(8.dp)) // Add vertical spacing
 
 
-                ChoosenFile(
+                ChosenFile(
                     selectedFile = selectedFiles[index],
                     viewModel = homeViewModel,
                     navController = navController
@@ -298,13 +251,13 @@ fun ChooseFileButton(
             contentColor = Color.White
         )
     ) {
-        Text(text = "Choose File")
+        Text(text = stringResource(id = R.string.choose_file))
     }
 }
 
 
 @Composable
-fun ChoosenFile(
+fun ChosenFile(
     selectedFile: File?,
     viewModel: MainViewModel,
     navController: NavController
@@ -336,7 +289,7 @@ fun ChoosenFile(
         )
 
     ) {
-        Text(text = "Details")
+        Text(text = stringResource(id = R.string.send_file))
     }
 }
 
@@ -345,14 +298,40 @@ fun ChoosenFile(
 @Composable
 fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
 
+    LaunchedEffect(Unit) {
+        viewModel.checkNFCStatus()
+    }
 
+    // Observe NFC status
+    val nfcStatus by viewModel.nfcStatus.collectAsState()
 
+    when (nfcStatus) {
+        NFCStatus.Enabled -> {
+            Log.d("nfcstatus", "enabled")
+
+        }
+
+        NFCStatus.Disabled -> {
+
+            Log.d("nfcstatus", "disabled")
+            PromptToEnableNFCDialog()
+        }
+
+        NFCStatus.NotSupported -> {
+
+            Log.d("nfcstatus", "notsupported")
+            NFCNotSupportedDialog()
+        }
+
+        NFCStatus.Unknown -> {
+            Log.d("nfcstatus", "unknown")
+        }
+    }
 
     Scaffold(
-        topBar = { HomeScreenTopBar(title = "flowtouch",context) },
+        topBar = { HomeScreenTopBar(title = "flowtouch", navController = navController) },
         floatingActionButton = {
             Box(modifier = Modifier.fillMaxSize()) {
-
             }
         }
     ) { innerPadding ->
@@ -362,15 +341,11 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
                 .padding(innerPadding)
         ) {
 
-
             updateNfcDataTransferState(context, false)
 
-            val activeUri by viewModel.urlStateFlow.collectAsState()
 
             val selectedFiles by viewModel.modelSelectedFiles.collectAsState()
 
-
-            //Text(text = activeUri.toString())
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -384,36 +359,15 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
                     modifier = Modifier.padding(1.dp)
                 )
                 IconButton(
-                    onClick = { /*TODO*/ },
-                    iconId = R.drawable.plik,
-                    contentDescription = context.resources.getString(R.string.file_icon),
+                    onClick = {
+
+                    },
+                    iconId = R.drawable.trust3,
+                    contentDescription = context.resources.getString(R.string.trusted_devices),
                     modifier = Modifier.padding(1.dp)
                 )
 
             }
-
-//            // Adding second row of buttons
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(horizontal = 16.dp, vertical = 8.dp), // Adjust padding as needed
-//                horizontalArrangement = Arrangement.SpaceEvenly
-//            ) {
-//
-//                IconButton(
-//                    onClick = { /*TODO*/ },
-//                    iconId = R.drawable.latest,
-//                    contentDescription = context.resources.getString(R.string.latest_icon)
-//                )
-//
-//
-//                IconButton(
-//                    onClick = { /*TODO*/ },
-//                    iconId = R.drawable.settings2,
-//                    contentDescription = context.resources.getString(R.string.settings_icon)
-//                )
-//            }
-
 
 
 
@@ -422,7 +376,6 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
             SwipeableTiles(
                 selectedFiles = selectedFiles,
-                context = context,
                 homeViewModel = viewModel,
                 navController = navController
             )
@@ -435,8 +388,6 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
         }
     }
-
-
 }
 
 @Composable
@@ -473,3 +424,69 @@ fun IconButton(
         )
     }
 }
+
+@Composable
+fun NFCNotSupportedDialog() {
+//    val context = LocalContext.current
+    var showDialog by remember { mutableStateOf(true) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            text = { Text(stringResource(R.string.nfc_not_supported)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDialog = false
+                    }) {
+                    Text(stringResource(R.string.ok))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun PromptToEnableNFCDialog() {
+    val context = LocalContext.current
+    var showDialog by remember { mutableStateOf(true) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            text = { Text(stringResource(R.string.nfc_disabled_prompt)) },
+
+
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDialog = false
+                            context.startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            buttonsColor,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text(stringResource(R.string.enable_nfc))
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = {
+                            showDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            buttonsColor,
+                            contentColor = Color.White
+                        )
+                    )
+                    {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+
+        )
+    }
+}
+
