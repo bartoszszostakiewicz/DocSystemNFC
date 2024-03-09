@@ -18,6 +18,7 @@ interface UrlCallback {
 
 class CloudComm(
     private val firebaseStorage: FirebaseStorage = FirebaseStorage.getInstance()
+
 ) {
 
 
@@ -32,21 +33,28 @@ class CloudComm(
 
         Log.d("TAG123", "onCreate: ${auth.currentUser}")
 
-        val uriFile = Uri.parse("${selectedFile?.uri}") // file path
+
         val fileRef =
             firebaseStorage.reference.child("images/${auth.currentUser?.uid}/test/${selectedFile?.name}")
 
-        fileRef.putFile(uriFile)
-            .addOnSuccessListener { taskSnapshot ->
-                // Get a URL to the uploaded content
-                val downloadUrl: Uri = taskSnapshot.uploadSessionUri!!
-                Log.d("TAG123", "onCreatexx: $downloadUrl")
+        selectedFile?.byteArray?.let { byteArray ->
+            if (byteArray.isNotEmpty()) {
+//                Log.d("TAG123", "ByteArray is not empty, uploading file :${selectedFile.byteArray.size} bytes")
+                fileRef.putBytes(byteArray).addOnSuccessListener {
+                    Log.d("TAG123", "File added to cloud: ${selectedFile.byteArray.size} bytes")
+                    Log.d("TAG123", "First 10 bytes: ${selectedFile.byteArray.sliceArray(0..9).contentToString()}")
+//                    Log.d("TAG123", "onCreateOK: $it")
+//                    Log.d("TAG123", "bytearray: ${selectedFile.byteArray}")
+//                    Log.d("TAG123", "size: ${selectedFile.byteArray.size}")
+                }.addOnFailureListener {
+                    Log.d("TAG123", "onCreateNOTOK: $it")
+                }
+            } else {
+                Log.d("TAG123", "ByteArray is empty, file not uploaded")
             }
-            .addOnFailureListener {
-                // Handle unsuccessful uploads
-                // ...
-                Log.d("TAG123", "onCreatexd: $it")
-            }
+        } ?: Log.d("TAG123", "Selected file or byteArray is null")
+
+
 
 
     }

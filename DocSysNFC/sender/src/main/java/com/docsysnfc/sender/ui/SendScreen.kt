@@ -1,341 +1,266 @@
 package com.docsysnfc.sender.ui
 
 import android.content.Context
-import android.net.Uri
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.StringRes
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
 import androidx.navigation.NavController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.docsysnfc.R
 import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.File
-import com.docsysnfc.sender.ui.theme.backgroundColor
-import com.docsysnfc.sender.ui.theme.backgroundColor2
-import com.docsysnfc.sender.ui.theme.buttonsColor
-import com.docsysnfc.sender.ui.theme.tilesColor
-import kotlin.math.roundToInt
 
-
-enum class NFCSysScreen(@StringRes val title: Int) {
-    Start(title = R.string.app_name),
-    Send(title = R.string.send),
-    SendDetails(title = R.string.send_details),
-    Receive(title = R.string.receive),
+fun updateNfcDataCipher(context: Context, isActive: Boolean) {
+    context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
+        putBoolean("isCipher", isActive)
+        apply()
+    }
 }
 
+fun getIconFile(file: File): Int {
 
-@Composable
-fun AppNavigation(viewModel: MainViewModel, context: Context) {
-    val navController = rememberNavController()
+    var icon: Int = R.drawable.plik
 
-    NavHost(
-        navController = navController,
-        startDestination = NFCSysScreen.Send.name
-    ) {
-
-
-        composable(NFCSysScreen.Send.name) { SendScreen(navController, viewModel, context) }
-
-        composable(
-            route = "${NFCSysScreen.SendDetails.name}/{index}",
-            arguments = listOf(
-                navArgument("index") { type = NavType.IntType }
-            )
-        ) { backStackEntry ->
-            val index = backStackEntry.arguments?.getInt("index")
-            if (index != null) {
-                SendDetailsScreen(navController, viewModel, context, index)
-            } else {
-                // Obsługa błędu, jeśli index jest null
-            }
+    when (file.type) {
+        "png", "jpeg", "jpg", "gif", "bmp", "tiff", "svg" -> {
+            icon = R.drawable.img1
         }
-        composable(NFCSysScreen.Receive.name) { ReceiveScreen(navController, viewModel, context) }
 
+        "mp3", "wav", "ogg", "aac", "flac", "m4a" -> {
+            icon = R.drawable.note2
+        }
 
+        "mp4", "avi", "mkv", "mov", "wmv", "flv" -> {
+            icon = R.drawable.movie2
+        }
     }
+
+    return icon
 }
 
 
 @Composable
-fun SendScreen(navController: NavController,viewModel: MainViewModel, context: Context){
-    Column(
+fun SendScreen(
+    navController: NavController,
+    viewModel: MainViewModel,
+    context: Context,
+    index: Int
+) {
+
+    var isCipher by rememberSaveable { mutableStateOf(false) }
+
+    val file = remember { viewModel.modelSelectedFiles.value[index] }
+    val animate by remember { mutableStateOf(/*viewModel.fileIsInCloud(file)*/ true) }
+    //data is ready to transfer
+    updateNfcDataTransferState(context, animate)
+
+    //check public key
+
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
+    val iconSize = screenWidth * 0.40f
+
+    val scale = if (animate) {
+        rememberInfiniteTransition(
+            label = ""
+        ).animateFloat(
+            initialValue = 0.99f,
+            targetValue = 1.01f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ), label = ""
+        ).value
+    } else 1f
+
+    Box(
         modifier = Modifier
-            .background(backgroundColor)
+            .fillMaxSize()
+            .background(if (animate) Color(0xFF69EE85) else Color(0xFF532B2B))
     ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(RoundedCornerShape(12))
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.5f)
+                .background(Color(0xFFB4E5FF))
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
 
-        val activeUri by viewModel.urlStateFlow.collectAsState()
+            Spacer(modifier = Modifier.weight(1f, true))
 
-        val selectedFiles by viewModel.modelSelectedFiles.collectAsState()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
+            ) {
 
-
-        Text(text =activeUri.toString())
-
-
-        Spacer(modifier = Modifier.weight(1f, true))
-
-        SwipeableTiles(
-            selectedFiles = selectedFiles,
-            context = context,
-            homeViewModel = viewModel,
-            navController = navController
-        )
-
-        Spacer(modifier = Modifier.weight(1f, true))
-
-        ChooseFileButton(
-            homeViewModel = viewModel,
-        )
-
-    }
-}
-
-
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SwipeableTiles(selectedFiles: List<File>, context: Context, homeViewModel: MainViewModel, navController: NavController) {
-    val tileWidth = 200.dp // Width of each tile
-    val tileHeight = 200.dp // Height of each tile
-    var isSwiping by remember { mutableStateOf(false) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-
-    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    val vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
-
-    val numberOfTiles = selectedFiles.size
-
-    // State to track whether a tile is in a special state
-    var specialTileState by remember { mutableStateOf(false) }
-
-    var specialTileIndex by remember { mutableIntStateOf(-1) }
-
-    var sliderValues by remember { mutableStateOf(List(numberOfTiles) { 0f }) }
+                Column {
+                    Row(
+                        modifier = Modifier,
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Icon(
+                            painter = painterResource(id = getIconFile(file)), // Replace with the actual drawable resource ID
+                            contentDescription = "Icon",
+                            modifier = Modifier
+                                .size(iconSize)
+//                                .padding(top = 8.dp, start = 8.dp)
+                        )
 
 
-
-    var newSliderValues by remember { mutableStateOf(List(numberOfTiles) { 0f }) }
-
-
-    LazyRow(
-        modifier = Modifier
-            .background(backgroundColor2)
-            .fillMaxWidth()
-            .pointerInput(Unit) {
-                detectTransformGestures { _, _, _, offset ->
-                    if (isSwiping) {
-                        offsetX += offset
-                    } else {
-                        isSwiping = true
                     }
                 }
-            }
-    ) {
-        items(numberOfTiles) { index ->
-            // Pobierz wybrany plik na podstawie indeksu
-            //val selectedFile = selectedFiles[index]
-//            var sliderValue = sliderValues[index] // ta linnia wywala ten blad
 
-            var sliderValue by remember { mutableStateOf(0f) }
-
-            if (index in sliderValues.indices) {
-                sliderValue = sliderValues[index]
-            }
-
-            val specialColor = if (specialTileState) Color.Red else tilesColor
-
-            // Calculate the new size based on the slider value
-            val newSize = 200.dp
-//                (if (sliderValue == 1f) 250.dp else tileWidth).takeIf { !specialTileState }
-//                    ?: 300.dp
-
-            // Calculate the new offset based on the specialTileIndex
-            val specialOffsetX = if (specialTileIndex == index) {
-                ((tileWidth - newSize) / 2).value
-            } else {
-                0f
-            }
-
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .width(newSize)
-                    .height(newSize)
-                    .offset { IntOffset(offsetX.roundToInt() + specialOffsetX.roundToInt(), 0) }
-                    .background(specialColor, shape = RoundedCornerShape(16.dp))
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.plik),
-                        contentDescription = "plik",
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start,
                         modifier = Modifier
-                            .graphicsLayer {
-                                alpha = 0.5f
-                                scaleX = 0.5f
-                                scaleY = 0.5f
+                            .fillMaxWidth() // Zapewnia, że `Row` wypełni dostępną szerokość
+                            .padding(8.dp)  // Dostosuj według potrzeb
+                    ) {
+                        Column {
+                            Icon(
+                                painter = painterResource(if (isCipher) R.drawable.cipher_on else R.drawable.cipher_off),
+                                contentDescription = "Icon",
+                                modifier = Modifier
+                                    .size(36.dp)
+                            )
+                            Text(
+                                text = "Encryption",
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Switch(
+                            modifier = Modifier,
+                            checked = isCipher,
+                            onCheckedChange = {
+                                isCipher = it
                             }
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp)) // Add spacing between Icon and Text
-
-                    Column {
-
-                        Text(
-                            text = "Name: ${
-                                selectedFiles[index].name
-                            }", fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Type: ${
-                                selectedFiles[index].type
-                            }", color = Color.Gray
-                        )
-                        Text(
-                            text = "Size: ${
-                                selectedFiles[index].size
-                            }MB", color = Color.Gray
                         )
                     }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start,
+                        modifier = Modifier
+                            .fillMaxWidth() // Zapewnia, że `Row` wypełni dostępną szerokość
+                            .padding(8.dp)  // Dostosuj według potrzeb
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f) // Column zajmuje 1 część dostępnego miejsca
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.cloud11),
+                                contentDescription = "Icon",
+                                modifier = Modifier
+                                    .size(36.dp)
+                            )
+                            Text(
+                                text = "Cloud",
+//
+                            )
+                        }
+
+                        Icon(
+                            painter = painterResource(R.drawable.ok),
+                            contentDescription = "Icon",
+                            modifier = Modifier
+                                .size(36.dp)
+                                .weight(0.55f) // Icon zajmuje 1 część dostępnego miejsca
+//
+                        )
+                    }
+
+
                 }
 
-                Spacer(modifier = Modifier.height(8.dp)) // Add vertical spacing
+                Spacer(modifier = Modifier.weight(1f, false))
 
 
+            }
 
-                Slider(
-                    value = sliderValue,
-                    onValueChange = {
+            Spacer(modifier = Modifier.weight(1f, false))
 
-                        sliderValue = it
-                        vibrator.vibrate(vibrationEffect)
+            Row {
+                Column {
+                    Text(
+                        text = stringResource(id = R.string.file_name) + ": " + file.name,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp, start = 8.dp)
+                    )
 
-                        // Check if slider is at max value and change the special tile index
-                        if (sliderValue == 1f) {
-                            specialTileIndex = index
+                    Text(
+                        text = stringResource(R.string.file_size) + ": " + file.size.toString() + stringResource(
+                            R.string.mb
+                        ),
+                        modifier = Modifier.padding(top = 8.dp, start = 8.dp)
 
-                        }
-                    },
-                    modifier = Modifier
-                        .scale(1f, 5f)
-                        .fillMaxWidth(),
-
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = Color.Green,
-                        thumbColor = Color.Transparent
-                    ),
-                )
-
-                ChoosenFile(selectedFile = selectedFiles[index], viewModel = homeViewModel, navController = navController)
-
+                    )
+                    Text(
+                        text = stringResource(R.string.file_type) + ": " + file.type,
+                        modifier = Modifier.padding(top = 8.dp, start = 8.dp)
+                    )
+                }
             }
         }
     }
 }
 
 
-@Composable
-fun ChooseFileButton(
-    homeViewModel: MainViewModel,
-) {
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { homeViewModel.onFilePicked(it) }
-    }
-    Button(
-        onClick = {
-            filePickerLauncher.launch("image/*")
-            homeViewModel.chooseFile()
-        },
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(
-            buttonsColor,
-            contentColor = Color.White
-        )
-    ) {
-        Text(text = "Choose File")
-    }
-}
-
-
-@Composable
-fun ChoosenFile(
-    selectedFile: File?,
-    viewModel: MainViewModel,
-    navController: NavController
-) {
-
-
-    Button(
-        onClick = {
-
-                  Log.d("TAG123", "linkztondhuehui: ${selectedFile?.url.toString()}")
-
-            navController.navigate("${NFCSysScreen.SendDetails.name}/${viewModel.modelSelectedFiles.value.indexOf(selectedFile)}")
-
-
-        },
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(
-            buttonsColor,
-            contentColor = Color.White
-        )
-
-    ) {
-        Text(text = "Details")
-    }
-}
 
 

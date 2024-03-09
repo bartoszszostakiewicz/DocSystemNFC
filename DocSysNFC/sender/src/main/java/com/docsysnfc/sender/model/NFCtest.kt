@@ -165,7 +165,8 @@ class NFCtest: HostApduService() {
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray {
 
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val isActivityVisible = prefs.getBoolean("isActivityVisible", true)
+        val isActivityVisible = prefs.getBoolean("isNfcDataTransferActive", true)
+        val isCipherActive = prefs.getBoolean("isCipher", false)
         //
         // The following flow is based on Appendix E "Example of Mapping Version 2.0 Command Flow"
         // in the NFC Forum specification

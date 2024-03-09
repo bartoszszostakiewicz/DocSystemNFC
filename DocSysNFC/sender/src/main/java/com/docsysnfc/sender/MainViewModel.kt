@@ -2,28 +2,33 @@ package com.docsysnfc.sender
 
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.docsysnfc.sender.model.CloudComm
 import com.docsysnfc.sender.model.File
 import com.docsysnfc.sender.model.FileManager
 import com.docsysnfc.sender.model.UrlCallback
+import com.docsysnfc.sender.model.securityModule.RSAEncryption
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.net.URL
+import com.docsysnfc.sender.model.securityModule.SecurityManager
 
 class MainViewModel (
     app: Application,
-//    private var fileManager: FileManager = FileManager(), // jak jest tutaj to wywala apke !!!!!!!!!!!
 ) : AndroidViewModel(app) {
 
 
     private val context = getApplication<Application>().applicationContext
 
-
+    //chage to dependency injection .);'()
     private val fileManager = FileManager()
     private val cloudComm = CloudComm()
+    private val securityManager = SecurityManager(RSAEncryption())
 
     //change list uri
 
@@ -54,55 +59,50 @@ class MainViewModel (
     }
 
 
+   fun addFile(uri: Uri) {
 
-    private fun addFile(uri: Uri) {
+       viewModelScope.launch {
         val currentList = _modelSelectedFiles.value.toMutableList()
         currentList.add(fileManager.toFile(uri, context))
 
-        fileManager.addFile(uri, context)
-        cloudComm.uploadFile(fileManager.toFile(uri, context))
-//        cloudComm.setURLToFile(currentList.last())
 
-        cloudComm.setURLToFile(currentList.last(), object : UrlCallback {
-            override fun onUrlAvailable(url: String) {
-                // Tutaj możesz używać uzyskanego URL, na przykład przypisując go do _activeURL
-                _activeURL.value = url
-                _startServiceEvent.value = url
+            fileManager.addFile(uri, context, securityManager) // Dodaj plik
+            val file = fileManager.getFiles().last()
+
+            if(file.byteArray.size == 0){
+                Log.d("TAG123", "Plik jest pusty lub nie udało się wczytać danych.")
+            }else{
+                Log.d("TAG123", "Plik dadasdassd: ${file.byteArray.size} bajtów")
+
+
+                cloudComm.uploadFile(file) // Prześlij plik
+
+                val lastFile = currentList.last()
+                cloudComm.setURLToFile(lastFile, object : UrlCallback {
+                    override fun onUrlAvailable(url: String) {
+                        // Użyj uzyskanego URL
+                        _activeURL.value = url
+                        _startServiceEvent.value = url
+                        _modelSelectedFiles.value = currentList
+                    }
+                })
+
+
             }
-        })
 
-        _modelSelectedFiles.value = currentList
+        }
 
-
-        //try to set in different way
-//        _activeURL.value = uri.toString()
 
     }
-//
-//    fun getFiles(): MutableList<File> {
-//        return fileManager.getFiles()
-//    }
-//
-//
-//    fun getSizeFile(uri: Uri): Double {
-//        return fileManager.getSizeFile(context, uri)
-//    }
-//
-//    fun getNameFile(uri: Uri): String {
-//        return fileManager.getNameFile(context, uri, extension = false)
-//    }
-//
-//    fun getTypeFile(uri: Uri): String {
-//        return fileManager.getTypeFile(context, uri)
-//    }
+
+    fun fileIsInCloud(file: File): Boolean {
+        return file.url != URL("https://www.google.com")
+    }
 
     fun chooseFile() {
         _modelSelectedFiles.update { fileManager.getFiles() }
     }
 
-    fun onFilePicked(uri: Uri) {
-        // Logika obsługi wybranego pliku, na przykład:
-        addFile(uri)
-    }
+
 
 }
