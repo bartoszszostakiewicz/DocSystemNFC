@@ -16,8 +16,24 @@
     <string name="file_type">Type</string>
     <string name="mb">MB</string>
     <string name="cancel">Cancel</string>
-    <string name="enable_nfc">Enable NFC</string>
+    <string name="enable_nfc">Activate</string>
     <string name="nfc_disabled_prompt">NFC disabled!</string>
     <string name="nfc_not_supported">NFC is not supported on this device!</string>
     <string name="ok">OK</string>
+    <string name="login_screen">Login screen\n</string>
+    <string name="create_screen">Create account screen</string>
+    <string name="recovery_screen">Password recovery screen</string>
+    <string name="logo">logo</string>
+    <string name="recovery_password">Password recovery</string>
+    <string name="register_now">Register now</string>
+    <string name="log_out">Log out</string>
+    <string name="encryption">Encryption</string>
+    <string name="cloud">Cloud</string>
+    <string name="colon">": "</string>
+    <string name="choose_file">Choose file</string>
+    <string name="create_account">Create</string>
+    <string name="repeat_password">Repeat password</string>
+    <string name="email">Email</string>
+    <string name="send_file">Send</string>
+    <string name="trusted_devices">Trusted devices</string>
 </resources>

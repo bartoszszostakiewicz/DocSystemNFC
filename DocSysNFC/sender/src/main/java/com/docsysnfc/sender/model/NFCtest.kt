@@ -14,6 +14,10 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import java.io.UnsupportedEncodingException
 import java.math.BigInteger
+
+
+
+
 //object AppConstants {
 //    const val ACTION_ACTIVITY_VISIBLE = "com.docsysnfc.sender.ACTION_ACTIVITY_VISIBLE"
 //    const val ACTION_ACTIVITY_INVISIBLE = "com.docsysnfc.sender.ACTION_ACTIVITY_INVISIBLE"
