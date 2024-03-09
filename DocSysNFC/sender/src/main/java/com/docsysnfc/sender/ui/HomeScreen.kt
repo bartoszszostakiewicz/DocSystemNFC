@@ -1,7 +1,8 @@
 package com.docsysnfc.sender.ui
 
-import android.content.ClipDescription
+
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -13,34 +14,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-
-
 import androidx.compose.foundation.layout.Column
-
 import androidx.compose.foundation.layout.Row
-
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.materialIcon
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -70,17 +60,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.docsysnfc.R
+import com.docsysnfc.sender.LoginActivity
 import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.File
 import com.docsysnfc.sender.ui.theme.backgroundColor
 import com.docsysnfc.sender.ui.theme.backgroundColor2
 import com.docsysnfc.sender.ui.theme.buttonsColor
 import com.docsysnfc.sender.ui.theme.tilesColor
+import com.google.firebase.auth.FirebaseAuth
 import kotlin.math.roundToInt
 
 
 enum class NFCSysScreen(@StringRes val title: Int) {
-    Start(title = R.string.app_name),
     Home(title = R.string.send),
     Send(title = R.string.send_details),
     Receive(title = R.string.receive),
@@ -128,7 +119,7 @@ fun AppNavigation(viewModel: MainViewModel, context: Context) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreenTopBar(title: String) {
+fun HomeScreenTopBar(title: String, context: Context) {
     TopAppBar(
         title = {
             Text(
@@ -143,15 +134,35 @@ fun HomeScreenTopBar(title: String) {
             titleContentColor = Color.White // Ustaw kolor tekstu tytułu, jeśli potrzebujesz
         ),
         actions = {
-
-
-
-
-
-
+            // Dodaj przyciski do paska aplikacji
+            LogoutButton(context = context)
 
         }
     )
+}
+
+@Composable
+fun LogoutButton(context: Context) {
+    Button(
+        onClick = {
+                FirebaseAuth.getInstance().signOut()
+                context.startActivity(Intent(context, LoginActivity::class.java))
+        },
+        modifier = Modifier,
+
+//            .padding(32.dp),
+        colors = ButtonDefaults.buttonColors(
+            buttonsColor,
+            contentColor = Color.White
+        )
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.log_out),
+            contentDescription = "logout",
+
+            )
+    }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -272,11 +283,11 @@ fun ChooseFileButton(
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { homeViewModel.onFilePicked(it) }
+        uri?.let { homeViewModel.addFile(it) }
     }
     Button(
         onClick = {
-            filePickerLauncher.launch("image/*")
+            filePickerLauncher.launch("*/*")
             homeViewModel.chooseFile()
         },
         modifier = Modifier
@@ -304,6 +315,8 @@ fun ChoosenFile(
         onClick = {
 
             Log.d("TAG123", "linkztondhuehui: ${selectedFile?.url.toString()}")
+            Log.d("TAG123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value.size}")
+            Log.d("TAG123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value[0].url}")
 
             navController.navigate(
                 "${NFCSysScreen.Send.name}/${
@@ -331,8 +344,12 @@ fun ChoosenFile(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
+
+
+
+
     Scaffold(
-        topBar = { HomeScreenTopBar(title = "flowtouch") },
+        topBar = { HomeScreenTopBar(title = "flowtouch",context) },
         floatingActionButton = {
             Box(modifier = Modifier.fillMaxSize()) {
 
@@ -361,7 +378,7 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 IconButton(
-                    onClick = { /*TODO*/ },
+                    onClick = { navController.navigate(NFCSysScreen.Receive.name) },
                     iconId = R.drawable.plik,
                     contentDescription = context.resources.getString(R.string.file_icon),
                     modifier = Modifier.padding(1.dp)
@@ -375,27 +392,27 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
             }
 
-            // Adding second row of buttons
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp), // Adjust padding as needed
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-
-                IconButton(
-                    onClick = { /*TODO*/ },
-                    iconId = R.drawable.latest,
-                    contentDescription = context.resources.getString(R.string.latest_icon)
-                )
-
-
-                IconButton(
-                    onClick = { /*TODO*/ },
-                    iconId = R.drawable.settings2,
-                    contentDescription = context.resources.getString(R.string.settings_icon)
-                )
-            }
+//            // Adding second row of buttons
+//            Row(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 16.dp, vertical = 8.dp), // Adjust padding as needed
+//                horizontalArrangement = Arrangement.SpaceEvenly
+//            ) {
+//
+//                IconButton(
+//                    onClick = { /*TODO*/ },
+//                    iconId = R.drawable.latest,
+//                    contentDescription = context.resources.getString(R.string.latest_icon)
+//                )
+//
+//
+//                IconButton(
+//                    onClick = { /*TODO*/ },
+//                    iconId = R.drawable.settings2,
+//                    contentDescription = context.resources.getString(R.string.settings_icon)
+//                )
+//            }
 
 
 

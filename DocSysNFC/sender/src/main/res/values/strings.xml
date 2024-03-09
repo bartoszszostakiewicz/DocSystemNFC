@@ -12,4 +12,12 @@
     <string name="file_icon">Files</string>
     <string name="latest_icon">Sent files\n</string>
     <string name="settings_icon">Settings</string>
+    <string name="file_size">Size</string>
+    <string name="file_type">Type</string>
+    <string name="mb">MB</string>
+    <string name="cancel">Cancel</string>
+    <string name="enable_nfc">Enable NFC</string>
+    <string name="nfc_disabled_prompt">NFC disabled!</string>
+    <string name="nfc_not_supported">NFC is not supported on this device!</string>
+    <string name="ok">OK</string>
 </resources>

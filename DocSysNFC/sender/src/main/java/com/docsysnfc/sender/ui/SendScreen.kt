@@ -3,9 +3,7 @@ package com.docsysnfc.sender.ui
 import android.content.Context
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateValue
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -37,8 +35,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
@@ -46,6 +44,34 @@ import androidx.navigation.NavController
 import com.docsysnfc.R
 import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.File
+
+fun updateNfcDataCipher(context: Context, isActive: Boolean) {
+    context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
+        putBoolean("isCipher", isActive)
+        apply()
+    }
+}
+
+fun getIconFile(file: File): Int {
+
+    var icon: Int = R.drawable.plik
+
+    when (file.type) {
+        "png", "jpeg", "jpg", "gif", "bmp", "tiff", "svg" -> {
+            icon = R.drawable.img1
+        }
+
+        "mp3", "wav", "ogg", "aac", "flac", "m4a" -> {
+            icon = R.drawable.note2
+        }
+
+        "mp4", "avi", "mkv", "mov", "wmv", "flv" -> {
+            icon = R.drawable.movie2
+        }
+    }
+
+    return icon
+}
 
 
 @Composable
@@ -60,19 +86,22 @@ fun SendScreen(
 
     val file = remember { viewModel.modelSelectedFiles.value[index] }
     val animate by remember { mutableStateOf(/*viewModel.fileIsInCloud(file)*/ true) }
+    //data is ready to transfer
     updateNfcDataTransferState(context, animate)
+
+    //check public key
 
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     val screenHeight = configuration.screenHeightDp.dp
-    val iconSize = screenWidth * 0.25f
+    val iconSize = screenWidth * 0.40f
 
     val scale = if (animate) {
         rememberInfiniteTransition(
             label = ""
         ).animateFloat(
-            initialValue = 0.95f,
-            targetValue = 1.05f,
+            initialValue = 0.99f,
+            targetValue = 1.01f,
             animationSpec = infiniteRepeatable(
                 animation = tween(durationMillis = 1000, easing = LinearEasing),
                 repeatMode = RepeatMode.Reverse
@@ -101,6 +130,8 @@ fun SendScreen(
             verticalArrangement = Arrangement.Top
         ) {
 
+            Spacer(modifier = Modifier.weight(1f, true))
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -116,140 +147,120 @@ fun SendScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.plik), // Replace with the actual drawable resource ID
+                            painter = painterResource(id = getIconFile(file)), // Replace with the actual drawable resource ID
                             contentDescription = "Icon",
                             modifier = Modifier
                                 .size(iconSize)
-                                .padding(top = 8.dp, start = 8.dp)
+//                                .padding(top = 8.dp, start = 8.dp)
                         )
 
 
                     }
                 }
 
-                Column {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
 
-
-                    Column(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start,
                         modifier = Modifier
-                            .padding(start = 8.dp)
-                            .fillMaxWidth(),
-                        horizontalAlignment = Alignment.End
-
-
+                            .fillMaxWidth() // Zapewnia, że `Row` wypełni dostępną szerokość
+                            .padding(8.dp)  // Dostosuj według potrzeb
                     ) {
+                        Column {
+                            Icon(
+                                painter = painterResource(if (isCipher) R.drawable.cipher_on else R.drawable.cipher_off),
+                                contentDescription = "Icon",
+                                modifier = Modifier
+                                    .size(36.dp)
+                            )
+                            Text(
+                                text = "Encryption",
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                        }
 
-                        Text(
-                            text = file.name,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = Color.Black
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Switch(
+                            modifier = Modifier,
+                            checked = isCipher,
+                            onCheckedChange = {
+                                isCipher = it
+                            }
                         )
-                        Text(
-                            text = file.type,
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = file.size.toString(),
-                            fontSize = 14.sp,
-                            color = Color.Gray
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start,
+                        modifier = Modifier
+                            .fillMaxWidth() // Zapewnia, że `Row` wypełni dostępną szerokość
+                            .padding(8.dp)  // Dostosuj według potrzeb
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f) // Column zajmuje 1 część dostępnego miejsca
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.cloud11),
+                                contentDescription = "Icon",
+                                modifier = Modifier
+                                    .size(36.dp)
+                            )
+                            Text(
+                                text = "Cloud",
+//
+                            )
+                        }
+
+                        Icon(
+                            painter = painterResource(R.drawable.ok),
+                            contentDescription = "Icon",
+                            modifier = Modifier
+                                .size(36.dp)
+                                .weight(0.55f) // Icon zajmuje 1 część dostępnego miejsca
+//
                         )
                     }
 
 
                 }
+
+                Spacer(modifier = Modifier.weight(1f, false))
+
+
             }
 
             Spacer(modifier = Modifier.weight(1f, false))
 
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-                modifier = Modifier
-                    .fillMaxWidth() // Zapewnia, że `Row` wypełni dostępną szerokość
-                    .padding(8.dp)  // Dostosuj według potrzeb
-            ) {
+            Row {
                 Column {
-                    Icon(
-                        painter = painterResource(if (isCipher) R.drawable.cipher_on else R.drawable.cipher_off),
-                        contentDescription = "Icon",
-                        modifier = Modifier
-                            .size(36.dp)
-//                            .padding(end = 8.dp) // Dostosuj margines, jeśli jest potrzebny
+                    Text(
+                        text = stringResource(id = R.string.file_name) + ": " + file.name,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp, start = 8.dp)
+                    )
+
+                    Text(
+                        text = stringResource(R.string.file_size) + ": " + file.size.toString() + stringResource(
+                            R.string.mb
+                        ),
+                        modifier = Modifier.padding(top = 8.dp, start = 8.dp)
+
                     )
                     Text(
-                        text = "Encryption",
-                        modifier = Modifier.padding(end = 8.dp) // Dostosuj margines, jeśli jest potrzebny
+                        text = stringResource(R.string.file_type) + ": " + file.type,
+                        modifier = Modifier.padding(top = 8.dp, start = 8.dp)
                     )
                 }
-
-                Switch(
-                    checked = isCipher,
-                    onCheckedChange = {
-                        isCipher = it
-                        updateNfcDataCipher(context, it)
-                    }
-                    // Nie potrzebujesz tu modyfikatora, jeśli już masz padding w Row
-                )
             }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-                modifier = Modifier
-                    .fillMaxWidth() // Zapewnia, że `Row` wypełni dostępną szerokość
-                    .padding(8.dp)  // Dostosuj według potrzeb
-            ) {
-                Column {
-                    Icon(
-                        painter = painterResource(R.drawable.cloud11),
-                        contentDescription = "Icon",
-                        modifier = Modifier
-                            .size(36.dp)
-//                            .padding(end = 8.dp) // Dostosuj margines, jeśli jest potrzebny
-                    )
-                    Text(
-                        text = "Cloud",
-                        modifier = Modifier.padding(end = 8.dp) // Dostosuj margines, jeśli jest potrzebny
-                    )
-                }
-
-                Icon(
-                    painter = painterResource(R.drawable.ok),
-                    contentDescription = "Icon",
-                    modifier = Modifier
-                        .size(36.dp)
-
-                )
-            }
-
         }
     }
 }
 
-fun updateNfcDataCipher(context: Context, isActive: Boolean) {
-    context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
-        putBoolean("isCipher", isActive)
-        apply()
-    }
-}
 
 
-fun getIconFile(file: File) : Int{
 
-    var icon: Int = R.drawable.plik
-
-    if(file.type == "png" || file.type == "jpeg" || file.type == "jpg" || file.type == "gif"){
-        icon  = R.drawable.img1
-    }
-    else if(file.type == "mp3" || file.type == "wav" || file.type == "ogg"){
-        icon  = R.drawable.img1
-    }
-    else if(file.type == "mp4" || file.type == "avi" || file.type == "mkv"){
-        icon  = R.drawable.movie2
-    }
-
-    return icon
-}
