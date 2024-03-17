@@ -1,5 +1,6 @@
 package com.docsysnfc.sender.ui
 
+import android.app.Activity
 import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.Image
@@ -35,7 +36,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -45,6 +45,7 @@ import androidx.navigation.NavController
 import com.docsysnfc.R
 import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.AuthenticationState
+import com.docsysnfc.sender.model.NFCSysScreen
 import com.docsysnfc.sender.ui.theme.backgroundColor
 import com.docsysnfc.sender.ui.theme.blackTextColor
 import com.docsysnfc.sender.ui.theme.buttonsColor
@@ -58,6 +59,8 @@ import com.docsysnfc.sender.ui.theme.whiteColor
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
+
+    viewModel.disableNFCReaderMode(context as Activity)
 
     val authenticationState by viewModel.authenticationState.collectAsState()
 
@@ -88,8 +91,15 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
     LaunchedEffect(authenticationState) {
         when (authenticationState) {
             AuthenticationState.SUCCESS -> {
-                Log.d("UI Event", "Authentication success")
-                navController.navigate(NFCSysScreen.Home.name)
+                Log.d("NFC123", "Authentication success")
+
+                if(viewModel.navigationDestination.value == NFCSysScreen.Receive){
+                    navController.navigate(NFCSysScreen.Receive.name)
+                }else{
+                    navController.navigate(NFCSysScreen.Home.name)
+                }
+
+
                 // Handle success, navigate to another screen
             }
 
@@ -100,8 +110,17 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
             }
             // ... other states
             AuthenticationState.UNKNOWN -> {
-                // Handle unknown state
-                Log.d("UI Event", "Unknown state")
+
+                //TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                Log.d("NFC123", "Authentication success")
+                if(viewModel.navigationDestination.value == NFCSysScreen.Receive){
+                    Log.d("NFC123", "RECEIVE OK")
+                    navController.navigate(NFCSysScreen.Receive.name)
+                }else{
+                    navController.navigate(NFCSysScreen.Home.name)
+                }
+
+
             }
         }
     }
@@ -228,7 +247,6 @@ fun CustomTextField(
             focusedBorderColor = outlineTextFieldFocusedBorderColor,
             unfocusedBorderColor = outlineTextFieldUnfocusedBorderColor,
             cursorColor = outlineTextFieldCursorColor,
-            textColor = blackTextColor,
 
             // Add error colors if you have a specific design for invalid input
 //            errorBorderColor = if (isTextValid == false) Color.Red else outlineTextFieldUnfocusedBorderColor,

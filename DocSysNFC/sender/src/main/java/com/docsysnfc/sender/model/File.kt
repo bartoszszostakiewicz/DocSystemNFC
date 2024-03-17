@@ -4,11 +4,11 @@ import android.net.Uri
 import java.net.URL
 
 data class File(
-    val name: String,
-    val uri: Uri,
-    val downloadLink: String,
-    val size: Double,
-    val type: String,
+    var name: String,
+    var uri: Uri,
+    var downloadLink: String,
+    var size: Double,
+    var type: String,
     var url: URL = URL("https://www.google.com"),
     var byteArray: ByteArray,
     var encryptedByteArray: ByteArray = ByteArray(0)
@@ -39,6 +39,10 @@ data class File(
         result = 31 * result + byteArray.contentHashCode()
         result = 31 * result + encryptedByteArray.contentHashCode()
         return result
+    }
+
+    fun renameTo(newName: String) {
+        this.name = newName
     }
 
 

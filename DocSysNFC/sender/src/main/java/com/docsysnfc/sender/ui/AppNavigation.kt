@@ -2,13 +2,13 @@ package com.docsysnfc.sender.ui
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.docsysnfc.sender.MainViewModel
+import com.docsysnfc.sender.model.NFCSysScreen
 
 @Composable
 fun AppNavigation(viewModel: MainViewModel, context: Context) {

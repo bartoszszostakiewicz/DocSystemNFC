@@ -36,4 +36,8 @@
     <string name="email">Email</string>
     <string name="send_file">Send</string>
     <string name="trusted_devices">Trusted devices</string>
+    <string name="NFCRead">Reading NFC</string>
+    <string name="NFCReadDescription">Bring your device close to the NFC tag again to read the data.</string>
+    <string name="NFCReadErrorDesc">Failed to read NFC data. Please ensure that the person sending the message is using the FlowTouch app.</string>
+    <string name="NFCReadError">NFC Reading Error</string>
 </resources>

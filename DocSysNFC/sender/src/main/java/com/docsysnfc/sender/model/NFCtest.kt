@@ -7,11 +7,13 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
+import android.nfc.NfcAdapter
 import android.nfc.cardemulation.HostApduService
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.annotation.RequiresApi
+import com.docsysnfc.sender.MainActivity
 import java.io.UnsupportedEncodingException
 import java.math.BigInteger
 
@@ -24,8 +26,10 @@ import java.math.BigInteger
 //}
 class NFCtest: HostApduService() {
 
+
     private val TAG = "NFC123"
 
+    //change aid aplication here and in xml file
     private val APDU_SELECT = byteArrayOf(
         0x00.toByte(), // CLA	- Class - Class of instruction
         0xA4.toByte(), // INS	- Instruction - Instruction code
@@ -120,29 +124,14 @@ class NFCtest: HostApduService() {
         2,
     )
 
-//    private var isActivityVisible = false
 
-//    private val activityStateReceiver = object : BroadcastReceiver() {
-//        override fun onReceive(context: Context, intent: Intent) {
-//            isActivityVisible = when (intent.action) {
-//                AppConstants.ACTION_ACTIVITY_VISIBLE -> true
-//                AppConstants.ACTION_ACTIVITY_INVISIBLE -> false
-//                else -> isActivityVisible
-//            }
-//        }
-//    }
-//    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
-//        val filter = IntentFilter().apply {
-//            addAction(AppConstants.ACTION_ACTIVITY_VISIBLE)
-//            addAction(AppConstants.ACTION_ACTIVITY_INVISIBLE)
-//        }
-//        registerReceiver(activityStateReceiver, filter, RECEIVER_NOT_EXPORTED)
+
 
         if (intent?.hasExtra("ndefMessage")!!) {
             NDEF_URI =
-                NdefMessage(createTextRecord("", intent.getStringExtra("ndefMessage")!!, NDEF_ID))
+                NdefMessage(createTextRecord("en", intent.getStringExtra("ndefMessage")!!, NDEF_ID))
 
             NDEF_URI_BYTES = NDEF_URI.toByteArray()
             NDEF_URI_LEN = fillByteArrayToFixedDimension(
@@ -157,19 +146,13 @@ class NFCtest: HostApduService() {
     }
 
 
-//    override fun onCreate() {
-//        super.onCreate()
-//        val filter = IntentFilter().apply {
-//            addAction(AppConstants.ACTION_ACTIVITY_VISIBLE)
-//            addAction(AppConstants.ACTION_ACTIVITY_INVISIBLE)
-//        }
-//        registerReceiver(activityStateReceiver, filter)
-//    }
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray {
 
+
+
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val isActivityVisible = prefs.getBoolean("isNfcDataTransferActive", true)
+        val senderMode = prefs.getBoolean("senderMode", true)
         val isCipherActive = prefs.getBoolean("isCipher", false)
         //
         // The following flow is based on Appendix E "Example of Mapping Version 2.0 Command Flow"
@@ -177,10 +160,20 @@ class NFCtest: HostApduService() {
         //
         Log.i(TAG, "processCommandApdu() | incoming commandApdu: " + commandApdu.toHex())
 
-        if (!isActivityVisible) {
+        if (!senderMode) {
             // Aktywność nie jest widoczna, więc nie obsługujemy żądania NFC.
             Log.d(TAG, "processCommandApdu() | Activity is not visible. Ignoring NFC request.")
-            return A_ERROR
+
+            //urucham jesli jest apka
+
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                Log.d(TAG, "put Receive as destinationId")
+                putExtra("destinationId", NFCSysScreen.Receive.name)
+            }
+
+            startActivity(intent)
+//            return A_ERROR
         }
         //
         // First command: NDEF Tag Application select (Section 5.5.2 in NFC Forum spec)
@@ -329,7 +322,7 @@ class NFCtest: HostApduService() {
 
     override fun onDeactivated(reason : Int) {
         // Obsługa deaktywacji usługi
-        Log.d("NFC123", "deact_processCommandApdu")
+        Log.d("TAG", "deact_processCommandApdu")
     }
 
 }

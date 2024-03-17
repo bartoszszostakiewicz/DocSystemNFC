@@ -1,6 +1,7 @@
 package com.docsysnfc.sender.ui
 
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -60,6 +61,7 @@ import com.docsysnfc.R
 import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.File
 import com.docsysnfc.sender.model.NFCStatus
+import com.docsysnfc.sender.model.NFCSysScreen
 import com.docsysnfc.sender.ui.theme.appBarColorTheme
 import com.docsysnfc.sender.ui.theme.backgroundColor
 import com.docsysnfc.sender.ui.theme.backgroundColor2
@@ -71,12 +73,14 @@ import kotlin.math.roundToInt
 
 
 //change location of this function
-fun updateNfcDataTransferState(context: Context, isActive: Boolean) {
+fun setSenderMode(context: Context, isActive: Boolean) {
     context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
-        putBoolean("isNfcDataTransferActive", isActive)
+        putBoolean("senderMode", isActive)
         apply()
     }
 }
+
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -294,13 +298,15 @@ fun ChosenFile(
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
+
+    viewModel.disableNFCReaderMode(context as Activity)
 
     LaunchedEffect(Unit) {
         viewModel.checkNFCStatus()
     }
+
 
     // Observe NFC status
     val nfcStatus by viewModel.nfcStatus.collectAsState()
@@ -341,7 +347,7 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
                 .padding(innerPadding)
         ) {
 
-            updateNfcDataTransferState(context, false)
+            setSenderMode(context, false)
 
 
             val selectedFiles by viewModel.modelSelectedFiles.collectAsState()

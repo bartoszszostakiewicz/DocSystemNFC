@@ -1,4 +1,4 @@
-package com.docsysnfc.sender.ui
+package com.docsysnfc.sender.model
 
 import androidx.annotation.StringRes
 import com.docsysnfc.R

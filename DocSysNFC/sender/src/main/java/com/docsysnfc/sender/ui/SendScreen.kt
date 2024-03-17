@@ -1,8 +1,10 @@
 package com.docsysnfc.sender.ui
 
+import android.app.Activity
 import android.content.Context
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.util.Log
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -85,6 +87,7 @@ fun SendScreen(
     context: Context,
     index: Int
 ) {
+    viewModel.disableNFCReaderMode(context as Activity)
 
     /************TODO ADD VIBRATION during sending files***************/
 
@@ -101,7 +104,7 @@ fun SendScreen(
     val animate by remember { mutableStateOf(/*viewModel.fileIsInCloud(file)*/ true) }
 
     //data is ready to transfer
-    updateNfcDataTransferState(context, animate)
+    setSenderMode(context, animate)
 
     //check public key
 
@@ -198,6 +201,7 @@ fun SendScreen(
                             checked = isCipher,
                             onCheckedChange = {
                                 isCipher = it
+                                Log.d("TAG123", "click")
                             }
                         )
                     }
@@ -241,20 +245,20 @@ fun SendScreen(
             Row {
                 Column {
                     Text(
-                        text = stringResource(id = R.string.file_name) + R.string.colon + file.name,
+                        text = stringResource(R.string.file_name) + stringResource(R.string.colon) + file.name,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(top = 8.dp, start = 8.dp)
                     )
 
                     Text(
-                        text = stringResource(R.string.file_size) + R.string.colon + file.size.toString() + stringResource(
+                        text = stringResource(R.string.file_size) + stringResource(R.string.colon) + file.size.toString() + stringResource(
                             R.string.mb
                         ),
                         modifier = Modifier.padding(top = 8.dp, start = 8.dp)
                     )
                     Text(
-                        text = stringResource(R.string.file_type) + stringResource(id = R.string.colon) + file.type,
+                        text = stringResource(R.string.file_type) + stringResource( R.string.colon) + file.type,
                         modifier = Modifier.padding(top = 8.dp, start = 8.dp)
                     )
                 }

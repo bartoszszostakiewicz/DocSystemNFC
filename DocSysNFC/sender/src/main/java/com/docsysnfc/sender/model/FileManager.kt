@@ -14,6 +14,9 @@ import java.io.ByteArrayOutputStream
 import java.net.URL
 
 import com.docsysnfc.sender.model.securityModule.SecurityManager
+import java.text.DecimalFormatSymbols
+import java.util.Locale
+import kotlin.math.round
 
 
 class FileManager(
@@ -23,10 +26,18 @@ class FileManager(
     private val selectedFiles = mutableListOf<File>()
 
 
-
     fun toFile(uri: Uri, context: Context): File {
-        return File(getNameFile(context, uri, false), uri,"", getSizeFile(context, uri), getTypeFile(context, uri), URL("https://www.google.com"), fileToByteArray(context, uri)!!)
+        return File(
+            getNameFile(context, uri, false),
+            uri,
+            "",
+            getSizeFile(context, uri),
+            getTypeFile(context, uri),
+            URL("https://www.google.com"),
+            fileToByteArray(context, uri)!!
+        )
     }
+
 
     fun addFile(uri: Uri, context: Context, securityManager: SecurityManager) {
 //        Log.d("TAG123", "Before encryption ")
@@ -41,7 +52,7 @@ class FileManager(
 //            val (encryptedData, encryptedAESKey) = securityManager.encryptDataWithAESAndRSA(byteArray, keys.first)
             //commented out because decoding is not implemented yet :)
             val encryptedData = byteArray
-            val encryptedAESKey = securityManager.encrypt(ByteArray(0), keys.first)
+//            val encryptedAESKey = securityManager.encrypt(ByteArray(0), keys.first)
 
 
 //            Log.d("TAG123", "Encrypted file: ${encryptedData.size} bytes")
@@ -58,7 +69,10 @@ class FileManager(
             )
             selectedFiles.add(newFile)
             Log.d("TAG123", "File added to selected files: ${newFile.byteArray.size} bytes")
-            Log.d("TAG123", "First 10 bytes: ${newFile.byteArray.sliceArray(0..9).contentToString()}")
+            Log.d(
+                "TAG123",
+                "First 10 bytes: ${newFile.byteArray.sliceArray(0..9).contentToString()}"
+            )
         } else {
 //            Log.d("TAG123", "File is empty or failed to load data.")
         }
@@ -91,7 +105,8 @@ class FileManager(
 
         // Pobierz typ MIME na podstawie rozszerzenia pliku
         val fileExtension = MimeTypeMap.getFileExtensionFromUrl(fileName)
-        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension.toLowerCase())
+        val mimeType =
+            MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension.lowercase(Locale.ROOT))
 
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
@@ -117,17 +132,8 @@ class FileManager(
      * @return size file in bytes
      */
 
-    private fun getSizeFile(context: Context, uri: Uri): Double {
-        val contentResolver = context.contentResolver
-        val fileDescriptor = contentResolver.openFileDescriptor(uri, "r")
-        val sizeInBytes = fileDescriptor?.use {
-            it.statSize.toDouble()
-        } ?: 0.0 // Jeśli plik nie istnieje lub nie można go odczytać, zwróć 0.0 MB
 
-        // Przelicz na megabajty (MB) i zaokrąglij do 2 miejsc po przecinku
-        val sizeInMB = sizeInBytes / (1000.0 * 1000.0)
-        return DecimalFormat("#.##").format(sizeInMB).toDouble()
-    }
+
 
     /**
      * @param context
@@ -135,25 +141,7 @@ class FileManager(
      * @return name file
      */
 
-    private fun getNameFile(context: Context, uri: Uri, extension: Boolean): String {
-        val contentResolver = context.contentResolver
-        val cursor = contentResolver.query(uri, null, null, null, null)
-        val nameIndex = cursor?.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-        cursor?.moveToFirst()
-        val name = cursor?.getString(nameIndex!!)
-        cursor?.close()
-        if (name != null) {
 
-            if (extension) {
-                return name.toString()
-            }
-
-            return name.toString().substringBeforeLast(".").substring(0, minOf(name.length, 10))
-        } else {
-            return "default"
-        }
-
-    }
 
 
     /**
@@ -165,6 +153,112 @@ class FileManager(
     private fun getTypeFile(context: Context, uri: Uri): String {
         return getNameFile(context, uri, extension = true).substringAfterLast(".")
     }
+
+    companion object {
+
+       fun getNameFile(context: Context, uri: Uri, extension: Boolean): String {
+            val contentResolver = context.contentResolver
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            val nameIndex = cursor?.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            cursor?.moveToFirst()
+            val name = cursor?.getString(nameIndex!!)
+            cursor?.close()
+            if (name != null) {
+
+                if (extension) {
+                    return name.toString()
+                }
+
+                return name.toString().substringBeforeLast(".").substring(0, minOf(name.length, 5))
+            } else {
+                return "default"
+            }
+
+       }
+
+        fun getExtensionFromMimeType(mimeType: String): String {
+            return ("." + MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType))
+        }
+
+        fun getMimeTypeFromExtension(extension: String): String? {
+            return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+        }
+
+        fun getSizeFile(context: Context, uri: Uri): Double {
+            var fileSize: Double = 0.0
+
+            val cursor = context.contentResolver.query(
+                uri, null, null, null, null, null
+            )
+
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    // W kolumnie "_size" znajduje się rozmiar pliku w bajtach
+                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                    if (sizeIndex != -1) {
+                        fileSize = cursor.getLong(sizeIndex).toDouble() // Pobiera rozmiar w bajtach jako Long, konwertuje na Double
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                cursor?.close()
+            }
+
+            return round(fileSize / (1024 * 1024) * 100) / 100
+        }
+
+        fun getSizeFileFromFileUri(uri: Uri): Double {
+            val file = uri.path?.let { java.io.File(it) } // Tworzy obiekt File z podanej ścieżki
+            if (file != null) {
+                return if (file.exists()) {
+                    val fileSizeInBytes = file.length()
+                    round(fileSizeInBytes.toDouble() / (1024 * 1024) * 100) / 100
+                } else {
+                    0.0
+                }
+            }
+            return 0.0
+        }
+
+        fun getSizeOfFileFromContentUri(context: Context, uri: Uri): Double {
+            var fileSizeInBytes: Long = 0
+
+            Log.d("NFC123", "Pobieranie rozmiaru pliku dla URI: $uri")
+
+            val cursor = context.contentResolver.query(
+                uri, arrayOf(OpenableColumns.SIZE), null, null, null)
+
+            if (cursor == null) {
+                Log.e("NFC123", "Cursor jest null dla URI: $uri")
+                return 0.0
+            }
+
+            cursor.use {
+                if (it.moveToFirst()) {
+                    val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE)
+                    if (sizeIndex != -1) {
+                        fileSizeInBytes = it.getLong(sizeIndex)
+                        Log.d("NFC123", "Rozmiar pliku w bajtach: $fileSizeInBytes")
+                    } else {
+                        Log.e("NFC123", "Nie znaleziono kolumny SIZE dla URI: $uri")
+                    }
+                } else {
+                    Log.e("NFC123", "Cursor nie może przejść do pierwszego wiersza dla URI: $uri")
+                }
+            }
+
+            val fileSizeInMB = fileSizeInBytes.toDouble() / (1024 * 1024)
+            Log.d("NFC123", "Rozmiar pliku w MB: $fileSizeInMB")
+
+            return fileSizeInMB
+        }
+
+    }
+
+
+
+
 
 
 
