@@ -56,9 +56,9 @@ class RSAEncryption {
     /**
      * Encrypts data with AES
      * @param data the data to be encrypted
-     * @return a pair of encrypted data and the AES key used to encrypt the data
+     * @return a Triple of encrypted data, the AES key used to encrypt the data, and the IV
      */
-    private fun encryptDataAES(data: ByteArray): Pair<ByteArray, SecretKey> {
+    fun encryptDataAES(data: ByteArray): Triple<ByteArray, SecretKey, ByteArray> {
         val keyGenerator = KeyGenerator.getInstance("AES")
         keyGenerator.init(256) // Używamy klucza 256-bitowego dla AES
         val secretKey = keyGenerator.generateKey()
@@ -71,7 +71,22 @@ class RSAEncryption {
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
         val encryptedData = cipher.doFinal(data)
 
-        return Pair(encryptedData, secretKey)
+        return Triple(encryptedData, secretKey, iv)
+    }
+
+    /**
+     * Decrypts data with AES
+     * @param encryptedData the data to be decrypted
+     * @param secretKey the secret key to decrypt the data with
+     * @param iv the initialization vector
+     * @return the decrypted data
+     */
+
+    fun decryptDataAES(encryptedData: ByteArray, secretKey: SecretKey, iv: ByteArray): ByteArray {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val ivSpec = IvParameterSpec(iv)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
+        return cipher.doFinal(encryptedData)
     }
 
 

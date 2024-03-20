@@ -20,10 +20,6 @@ import java.math.BigInteger
 
 
 
-//object AppConstants {
-//    const val ACTION_ACTIVITY_VISIBLE = "com.docsysnfc.sender.ACTION_ACTIVITY_VISIBLE"
-//    const val ACTION_ACTIVITY_INVISIBLE = "com.docsysnfc.sender.ACTION_ACTIVITY_INVISIBLE"
-//}
 class NFCtest: HostApduService() {
 
 
@@ -127,8 +123,6 @@ class NFCtest: HostApduService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
-
-
         if (intent?.hasExtra("ndefMessage")!!) {
             NDEF_URI =
                 NdefMessage(createTextRecord("en", intent.getStringExtra("ndefMessage")!!, NDEF_ID))
@@ -153,11 +147,7 @@ class NFCtest: HostApduService() {
 
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         val senderMode = prefs.getBoolean("senderMode", true)
-        val isCipherActive = prefs.getBoolean("isCipher", false)
-        //
-        // The following flow is based on Appendix E "Example of Mapping Version 2.0 Command Flow"
-        // in the NFC Forum specification
-        //
+
         Log.i(TAG, "processCommandApdu() | incoming commandApdu: " + commandApdu.toHex())
 
         if (!senderMode) {
@@ -173,7 +163,7 @@ class NFCtest: HostApduService() {
             }
 
             startActivity(intent)
-//            return A_ERROR
+
         }
         //
         // First command: NDEF Tag Application select (Section 5.5.2 in NFC Forum spec)
@@ -317,12 +307,9 @@ class NFCtest: HostApduService() {
     }
 
 
-//    private fun ByteArray.toHex(): String = joinToString(separator = " ") { byte -> "%02X".format(byte) }
-
-
     override fun onDeactivated(reason : Int) {
         // Obsługa deaktywacji usługi
-        Log.d("TAG", "deact_processCommandApdu")
+        Log.d("nfc123", "deact_processCommandApdu")
     }
 
 }

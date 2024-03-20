@@ -62,10 +62,10 @@ class MainActivity : ComponentActivity() {
 
 
         lifecycleScope.launch {
-            viewModel.startServiceEvent.collect { ndefMessage ->
-                ndefMessage?.let {
+            viewModel.activeURL.collect { ndefMessage ->
+                ndefMessage.let {
                     startNFCService(it)
-                    viewModel.resetServiceEvent()
+                    Log.d("NFC1234", "Payload:  $ndefMessage")
                 }
             }
         }
@@ -121,12 +121,23 @@ class MainActivity : ComponentActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             REQUEST_CODE -> {
-                if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    // Uprawnienia zostały przyznane. Możesz kontynuować zapis do katalogu Downloads.
-                } else {
-                    // Uprawnienia zostały odrzucone. Musisz to obsłużyć.
-                    Toast.makeText(this, "Uprawnienia zapisu zostały odrzucone.", Toast.LENGTH_SHORT).show()
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+
+                    if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                        // Uprawnienia zostały przyznane. Możesz kontynuować zapis do katalogu Downloads.
+                    } else {
+                        // Uprawnienia zostały odrzucone. Musisz to obsłużyć.
+                        Toast.makeText(
+                            this,
+                            "Uprawnienia zapisu zostały odrzucone.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    return
                 }
+            }
+            else -> {
+                // Inne przypadki, które mogłeś poprosić o uprawnienia.
                 return
             }
             // Sprawdź inne uprawnienia, które mogłeś poprosić.

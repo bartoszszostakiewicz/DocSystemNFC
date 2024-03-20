@@ -126,16 +126,15 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
     }
 
 
-
     Box(
         modifier = Modifier
-            .fillMaxSize() // Make sure to use fillMaxSize
+            .fillMaxSize()
             .background(color = com.docsysnfc.sender.ui.theme.backgroundColor)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)// Thanks to this padding, the background does not spread over the entire screen, I don't want it
+                .padding(16.dp)
                 .verticalScroll(state = scrollState)
                 .background(color = backgroundColor),
 
@@ -155,7 +154,7 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
                 },
                 label = loginName,
                 isTextValid = isEmailValid,
-                visualTransformation = VisualTransformation.None // Normal text field for email
+                visualTransformation = VisualTransformation.None
             )
 
 
@@ -165,7 +164,7 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
                 onTextChange = {
                     password = it
                     isPasswordValid =
-                        password.isNotEmpty() // Update your validation logic as needed
+                        password.isNotEmpty()
                 },
                 label = "Password",
                 isTextValid = isPasswordValid,
@@ -248,14 +247,10 @@ fun CustomTextField(
             unfocusedBorderColor = outlineTextFieldUnfocusedBorderColor,
             cursorColor = outlineTextFieldCursorColor,
 
-            // Add error colors if you have a specific design for invalid input
-//            errorBorderColor = if (isTextValid == false) Color.Red else outlineTextFieldUnfocusedBorderColor,
-//            focusedLabelColor = if (isTextValid == false) Color.Red else outlineTextFieldFocusedBorderColor
         ),
         singleLine = true,
 
         visualTransformation = visualTransformation,
-//        isError = isTextValid == false, // Show error state based on isTextValid
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)

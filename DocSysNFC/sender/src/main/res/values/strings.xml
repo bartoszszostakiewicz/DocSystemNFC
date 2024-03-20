@@ -40,4 +40,8 @@
     <string name="NFCReadDescription">Bring your device close to the NFC tag again to read the data.</string>
     <string name="NFCReadErrorDesc">Failed to read NFC data. Please ensure that the person sending the message is using the FlowTouch app.</string>
     <string name="NFCReadError">NFC Reading Error</string>
+    <string name="encrypted">Encrypted</string>
+    <string name="separator">//</string>
+    <string name="downloading">Downloading file ...</string>
+    <string name="received_file">Received files</string>
 </resources>

@@ -50,6 +50,7 @@ import com.docsysnfc.sender.model.File
 import com.docsysnfc.sender.ui.theme.backgroundColor
 import com.docsysnfc.sender.ui.theme.fileIsNotInCloudColor
 import com.docsysnfc.sender.ui.theme.sendingFileColor
+import com.docsysnfc.sender.ui.theme.tilesColor
 
 fun updateNfcDataCipher(context: Context, isActive: Boolean) {
     context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
@@ -100,13 +101,11 @@ fun SendScreen(
 
     val file = remember { viewModel.modelSelectedFiles.value[index] }
 
-    //if animate is true, the file is ready to transfer and is in the cloud
+
     val animate by remember { mutableStateOf(/*viewModel.fileIsInCloud(file)*/ true) }
 
-    //data is ready to transfer
-    setSenderMode(context, animate)
 
-    //check public key
+    setSenderMode(context, animate)
 
 
     val iconSize = LocalConfiguration.current.screenWidthDp.dp * 0.40f
@@ -127,7 +126,7 @@ fun SendScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (animate) sendingFileColor else fileIsNotInCloudColor)
+            .background(if (animate) backgroundColor else fileIsNotInCloudColor)
     ) {
         Column(
             modifier = Modifier
@@ -139,7 +138,7 @@ fun SendScreen(
                 .clip(RoundedCornerShape(12))
                 .fillMaxWidth(0.9f)
                 .fillMaxHeight(0.5f)
-                .background(backgroundColor)
+                .background(tilesColor)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
@@ -152,7 +151,7 @@ fun SendScreen(
                     .fillMaxWidth()
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start
+                horizontalArrangement = Arrangement.Center
             ) {
 
                 Column {
@@ -162,82 +161,15 @@ fun SendScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Icon(
-                            painter = painterResource(id = getIconFile(file)), // Replace with the actual drawable resource ID
+                            painter = painterResource(id = getIconFile(file)),
                             contentDescription = "Icon",
                             modifier = Modifier
                                 .size(iconSize)
+                                .align(Alignment.CenterVertically)
+
                         )
                     }
                 }
-
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                    ) {
-                        Column {
-                            Icon(
-                                painter = painterResource(if (isCipher) R.drawable.cipher_on else R.drawable.cipher_off),
-                                contentDescription = "Icon",
-                                modifier = Modifier
-                                    .size(36.dp)
-                            )
-                            Text(
-                                text = stringResource(id = R.string.encryption),
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        Switch(
-                            modifier = Modifier,
-                            checked = isCipher,
-                            onCheckedChange = {
-                                isCipher = it
-                                Log.d("TAG123", "click")
-                            }
-                        )
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.cloud11),
-                                contentDescription = "Icon",
-                                modifier = Modifier
-                                    .size(36.dp)
-                            )
-                            Text(
-                                text = stringResource(id = R.string.cloud),
-                            )
-                        }
-
-                        Icon(
-                            painter = painterResource(R.drawable.ok),
-                            contentDescription = "Icon",
-                            modifier = Modifier
-                                .size(36.dp)
-                                .weight(0.55f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f, false))
             }
 
             Spacer(modifier = Modifier.weight(1f, false))

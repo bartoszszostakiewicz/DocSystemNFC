@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,7 +32,6 @@ import com.docsysnfc.sender.model.CreateAccountState
 import com.docsysnfc.sender.model.NFCSysScreen
 import com.docsysnfc.sender.ui.theme.backgroundColor
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
 
@@ -77,11 +75,10 @@ fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, 
                 },
                 label = stringResource(id = R.string.email),
                 isTextValid = isEmailValid,
-                visualTransformation = VisualTransformation.None // Normal text field for email
+                visualTransformation = VisualTransformation.None
             )
 
-          
-//            Spacer(modifier = Modifier.height(8.dp))
+
 
             CustomTextField(
                 text = password,
@@ -90,7 +87,6 @@ fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, 
                 visualTransformation = PasswordVisualTransformation(),
             )
 
-//            Spacer(modifier = Modifier.height(8.dp))
 
             CustomTextField(
                 text = repeatPassword,
@@ -99,7 +95,6 @@ fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, 
                 visualTransformation = PasswordVisualTransformation(),
             )
 
-//            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {

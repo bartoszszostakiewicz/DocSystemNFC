@@ -7,15 +7,17 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -25,6 +27,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,25 +36,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.wear.compose.material.ExperimentalWearMaterialApi
-import androidx.wear.compose.material.FractionalThreshold
-import androidx.wear.compose.material.rememberSwipeableState
-import androidx.wear.compose.material.swipeable
 import com.docsysnfc.R
 import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.File
 import com.docsysnfc.sender.ui.theme.backgroundColor
 import com.docsysnfc.sender.ui.theme.buttonsColor
 import com.docsysnfc.sender.ui.theme.tilesColor
+import com.docsysnfc.sender.ui.theme.whiteColor
 import java.nio.charset.Charset
+
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -60,19 +64,24 @@ fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, contex
     setSenderMode(context, false)
     viewModel.enableNFCReaderMode(context as Activity)
 
-    val showNfcPrompt= remember { mutableStateOf(true) }
+    val showNfcPrompt = remember { mutableStateOf(true) }
     val showDialog = remember { mutableStateOf(false) }
 
 
+    ErrorAlert(
+        title = stringResource(id = R.string.NFCRead),
+        text = stringResource(R.string.NFCReadDescription),
+        showDialog = showNfcPrompt,
+        onDismiss = { showNfcPrompt.value = false })
 
-
-    ErrorAlert(title = stringResource(id = R.string.NFCRead) , text = stringResource(R.string.NFCReadDescription), showDialog = showNfcPrompt, onDismiss = { showNfcPrompt.value = false })
-
-    ErrorAlert(title = stringResource(id = R.string.NFCReadError), text = stringResource(id = R.string.NFCReadErrorDesc), showDialog = showDialog, onDismiss = { showDialog.value = false })
+    ErrorAlert(
+        title = stringResource(id = R.string.NFCReadError),
+        text = stringResource(id = R.string.NFCReadErrorDesc),
+        showDialog = showDialog,
+        onDismiss = { showDialog.value = false })
 
     val nfcTag = viewModel.nfcTag.collectAsState()
 
-    // Używamy LaunchedEffect do wywołania funkcji wstrzymującej
     LaunchedEffect(nfcTag.value) {
         nfcTag.value?.let {
             try {
@@ -83,7 +92,9 @@ fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, contex
                 if (ndefMessage != null && ndefMessage.records.isNotEmpty()) {
                     val payload = ndefMessage.records[0].payload
                     val payloadStr = String(payload, Charset.forName("UTF-8"))
-                    // Wywołanie funkcji wstrzymującej
+
+                    Log.d("NFC123", "Payload: $payloadStr")
+
                     viewModel.downloadFile(payloadStr, context)
                 }
                 ndef?.close()
@@ -101,10 +112,8 @@ fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, contex
 
     ReceiveFileScreen(fileList.value, viewModel, context)
 
-
 }
 
-//
 @Composable
 fun ErrorAlert(
     title: String,
@@ -122,7 +131,7 @@ fun ErrorAlert(
                     onClick = onDismiss,
                     colors = ButtonDefaults.buttonColors(buttonsColor)
                 ) {
-                    Text("OK")
+                    Text(stringResource(id = R.string.ok))
                 }
             }
         )
@@ -130,7 +139,6 @@ fun ErrorAlert(
 }
 
 
-@OptIn(ExperimentalWearMaterialApi::class)
 @Composable
 fun FileCard(
     file: File,
@@ -138,14 +146,14 @@ fun FileCard(
     context: Context,
 ) {
 
+    var isCipher by rememberSaveable { mutableStateOf(false) }
 
 
     Card(
         colors = CardDefaults.cardColors(containerColor = tilesColor),
         modifier = Modifier
             .fillMaxWidth(0.95f)
-            .padding(8.dp)
-        ,
+            .padding(8.dp),
 
         ) {
         Column(
@@ -153,36 +161,90 @@ fun FileCard(
                 .padding(16.dp)
         ) {
 
-//            Text(text = "Received file:", style = MaterialTheme.typography.headlineSmall)
-            Text(text = "File name: ${file.name}", style = MaterialTheme.typography.headlineSmall)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .fillMaxWidth(),
+            ) {
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "File name: ${file.name.take(8)}",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Icon(
+                        painter = painterResource(id = R.drawable.cancelled),
+                        contentDescription = "Icon",
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clickable {
+                                viewModel.deleteReceivedFile(file)
+                            }
+                    )
+                }
+            }
+
+
+
             Text(
                 text = "Size: ${String.format("%.2f", file.size)} MB",
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyMedium
             )
-
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Button(
-                onClick = {
-                    viewModel.openFile(context, file.uri, file.type)
-                },
-                colors = ButtonDefaults.buttonColors(buttonsColor)
-            ) {
-                Text(text = "Open")
-            }
+            Row {
+                if (file.encryption) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    Row {
+                        Button(
+                            onClick = {
+                                viewModel.openFile(context, file.uri, file.type)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                buttonsColor,
+                                contentColor = whiteColor
+                            ),
+                        ) {
+                            Text(text = "Open")
+                        }
+                    }
+                }
 
+                Icon(
+                    painter = painterResource(if (isCipher) R.drawable.cipher_on else R.drawable.cipher_off),
+                    contentDescription = "Icon",
+                    modifier = Modifier
+                        .padding(start = 100.dp)
+                        .size(50.dp)
+                        .align(Alignment.CenterVertically)
+                        .clickable {
+                            isCipher = !isCipher
+                            viewModel.handleEncryption(file, false, true)
+                        }
+                )
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceiveFileScreen(fileList: List<File>, mainViewModel: MainViewModel, context: Context) {
 
     Scaffold(
         topBar = {
-            HomeScreenTopBar(title = "Received files", navController = NavController(context))
+            HomeScreenTopBar(title = stringResource(id = R.string.received_file), navController = NavController(context))
         }
     ) { innerPadding ->
         val isLoading = mainViewModel.fileIsDownloading.collectAsState().value
@@ -202,11 +264,11 @@ fun ReceiveFileScreen(fileList: List<File>, mainViewModel: MainViewModel, contex
                     CircularProgressIndicator(
                         modifier = Modifier.padding(16.dp),
                         color = contentColorFor(backgroundColor)
-                    ) // Wyświetlenie wskaźnika postępu
+                    )
                     Text(
-                        "Downloading file...",
+                        stringResource(id = R.string.downloading),
                         style = MaterialTheme.typography.bodyMedium
-                    ) // Komunikat o pobieraniu
+                    )
                 }
             }
             LazyColumn(
@@ -216,9 +278,9 @@ fun ReceiveFileScreen(fileList: List<File>, mainViewModel: MainViewModel, contex
                 items(fileList) { file ->
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth() // Ensure this Box uses the full width available
-                            .padding(8.dp), // Add padding around the Box
-                        contentAlignment = Alignment.Center // Center-align the content inside the Box
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         FileCard(
                             file = file,

@@ -10,19 +10,23 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,7 +42,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,8 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -57,6 +60,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.navigation.NavController
+import androidx.wear.compose.material.ExperimentalWearMaterialApi
+import androidx.wear.compose.material.FractionalThreshold
+import androidx.wear.compose.material.rememberSwipeableState
+import androidx.wear.compose.material.swipeable
 import com.docsysnfc.R
 import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.File
@@ -64,7 +71,6 @@ import com.docsysnfc.sender.model.NFCStatus
 import com.docsysnfc.sender.model.NFCSysScreen
 import com.docsysnfc.sender.ui.theme.appBarColorTheme
 import com.docsysnfc.sender.ui.theme.backgroundColor
-import com.docsysnfc.sender.ui.theme.backgroundColor2
 import com.docsysnfc.sender.ui.theme.buttonsColor
 import com.docsysnfc.sender.ui.theme.tilesColor
 import com.docsysnfc.sender.ui.theme.whiteColor
@@ -81,8 +87,6 @@ fun setSenderMode(context: Context, isActive: Boolean) {
 }
 
 
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreenTopBar(title: String, navController: NavController) {
@@ -91,12 +95,12 @@ fun HomeScreenTopBar(title: String, navController: NavController) {
             Text(
                 text = title,
                 fontWeight = FontWeight.Bold,
-                color = whiteColor, 
+                color = whiteColor,
                 style = MaterialTheme.typography.titleLarge
             )
         },
         colors = TopAppBarDefaults.smallTopAppBarColors(
-            containerColor = appBarColorTheme, 
+            containerColor = appBarColorTheme,
             titleContentColor = whiteColor
         ),
         actions = {
@@ -122,7 +126,7 @@ fun LogoutButton(navController: NavController) {
         Icon(
             painter = painterResource(R.drawable.log_out),
             contentDescription = stringResource(id = R.string.log_out),
-            )
+        )
     }
 
 }
@@ -133,101 +137,167 @@ fun SwipeableTiles(
     homeViewModel: MainViewModel,
     navController: NavController
 ) {
+    LazyRow {
+        items(selectedFiles) { file ->
+            SwipeableTile(file, homeViewModel, navController)
+        }
+    }
+}
 
+@OptIn(ExperimentalWearMaterialApi::class)
+@Composable
+fun SwipeableTile(
+    file: File,
+    viewModel: MainViewModel,
+    navController: NavController
+) {
     val tileWidth = integerResource(id = R.integer.tileWidth).dp
     val tileHeight = integerResource(id = R.integer.tileHeight).dp
 
+    val state = rememberSwipeableState(initialValue = 0)
+    val offset = state.offset.value
+    val sizePx = with(LocalDensity.current) { tileHeight.toPx() }
+    val anchors = mapOf(0f to 0, sizePx to 1)
+
+    val isCipher = remember { mutableStateOf(false) }
 
 
 
-    var isSwiping by remember { mutableStateOf(false) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
+    val uploadComplete by viewModel.uploadComplete.collectAsState()
+
+    LaunchedEffect(uploadComplete) {
+        if (uploadComplete) {
+            navController.navigate(
+                "${NFCSysScreen.Send.name}/${
+                    viewModel.modelSelectedFiles.value.indexOf(
+                        file
+                    )
+                }"
+            )
+            viewModel.resetUploadComplete()
+        }
+    }
 
 
 
-    val numberOfTiles = selectedFiles.size
-
-
-    val specialTileState by remember { mutableStateOf(false) }
-
-
-    LazyRow(
+    Column(
         modifier = Modifier
-            .background(backgroundColor2)
-            .fillMaxWidth()
-            .pointerInput(Unit) {
-                detectTransformGestures { _, _, _, offset ->
-                    if (isSwiping) {
-                        offsetX += offset
-                    } else {
-                        isSwiping = true
-                    }
-                }
-            }
+            .padding(16.dp)
+            .width(tileWidth)
+            .height(tileHeight)
+            .background(tilesColor, shape = RoundedCornerShape(16.dp))
+//            .offset { IntOffset(0, -offset.roundToInt()) }
+            .swipeable(
+                state = state,
+                anchors = anchors,
+                thresholds = { _, _ -> FractionalThreshold(0.3f) },
+                orientation = Orientation.Horizontal
+            )
     ) {
-        items(numberOfTiles) { index ->
+        if (state.currentValue == 1) {
+            // Logika usuwania pliku
+            viewModel.deleteSelectedFile(file)
+        }
 
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(175.dp)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
 
-            val specialColor = if (specialTileState) Color.Red else tilesColor
-
-
-            Column(
+            Row(
                 modifier = Modifier
-                    .padding(16.dp)
-                    .width(tileWidth)
-                    .height(tileHeight)
-                    .offset {
-                        IntOffset(offsetX.roundToInt(), 0)
-                    }
-                    .background(specialColor, shape = RoundedCornerShape(16.dp))
+                    .fillMaxWidth()
+                    .fillMaxHeight(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+
+                Column(
+                    modifier = Modifier
+                        .padding(start = 35.dp)
+                        .weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+
+
                     Icon(
-                        painter = painterResource(R.drawable.plik),
+                        painter = painterResource(id = getIconFile(file)),
                         contentDescription = "plik",
                         modifier = Modifier
                             .graphicsLayer {
-                                alpha = 0.5f
-                                scaleX = 0.5f
-                                scaleY = 0.5f
+                                alpha = 0.8f
+                                scaleX = 0.8f
+                                scaleY = 0.8f
                             }
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp)) // Add spacing between Icon and Text
-
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(8.dp)
+                    ) {
 
                         Text(
                             text = "Name: ${
-                                selectedFiles[index].name
+                                file.name
                             }", fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Type: ${
-                                selectedFiles[index].type
+                                file.type
                             }", color = Color.Gray
                         )
                         Text(
                             text = "Size: ${
-                                selectedFiles[index].size
+                                file.size
                             }MB", color = Color.Gray
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp)) // Add vertical spacing
+                Spacer(modifier = Modifier.height(32.dp))
 
-
-                ChosenFile(
-                    selectedFile = selectedFiles[index],
-                    viewModel = homeViewModel,
-                    navController = navController
-                )
-
+                Column {
+                    Icon(
+                        painter = painterResource(if (isCipher.value) R.drawable.cipher_on else R.drawable.cipher_off),
+                        contentDescription = "Icon",
+                        modifier = Modifier
+                            .size(30.dp)
+                            .align(Alignment.CenterHorizontally)
+                            .clickable {
+                                isCipher.value = !isCipher.value
+                                viewModel.handleEncryption(file, isCipher.value)
+                            }
+                    )
+                }
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp)) // Add vertical spacing
+
+
+        Button(
+            onClick = {
+
+                Log.d("TAG123", "linkztondhuehui: ${file.url.toString()}")
+                Log.d("TAG123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value.size}")
+                Log.d("TAG123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value[0].url}")
+
+                viewModel.pushFileIntoCloud(file, isCipher.value)
+
+            },
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                buttonsColor,
+                contentColor = Color.White
+            )
+
+        ) {
+            Text(text = stringResource(id = R.string.send_file))
         }
     }
 }
@@ -245,7 +315,6 @@ fun ChooseFileButton(
     Button(
         onClick = {
             filePickerLauncher.launch("*/*")
-            homeViewModel.chooseFile()
         },
         modifier = Modifier
             .padding(16.dp)
@@ -261,47 +330,11 @@ fun ChooseFileButton(
 
 
 @Composable
-fun ChosenFile(
-    selectedFile: File?,
-    viewModel: MainViewModel,
-    navController: NavController
-) {
-
-
-    Button(
-        onClick = {
-
-            Log.d("TAG123", "linkztondhuehui: ${selectedFile?.url.toString()}")
-            Log.d("TAG123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value.size}")
-            Log.d("TAG123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value[0].url}")
-
-            navController.navigate(
-                "${NFCSysScreen.Send.name}/${
-                    viewModel.modelSelectedFiles.value.indexOf(
-                        selectedFile
-                    )
-                }"
-            )
-
-        },
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(
-            buttonsColor,
-            contentColor = Color.White
-        )
-
-    ) {
-        Text(text = stringResource(id = R.string.send_file))
-    }
-}
-
-
-@Composable
 fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
 
     viewModel.disableNFCReaderMode(context as Activity)
+
+
 
     LaunchedEffect(Unit) {
         viewModel.checkNFCStatus()
@@ -350,8 +383,6 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
             setSenderMode(context, false)
 
 
-            val selectedFiles by viewModel.modelSelectedFiles.collectAsState()
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -375,13 +406,10 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
             }
 
-
-
-
             Spacer(modifier = Modifier.weight(1f, true))
 
             SwipeableTiles(
-                selectedFiles = selectedFiles,
+                selectedFiles = viewModel.modelSelectedFiles.collectAsState().value,
                 homeViewModel = viewModel,
                 navController = navController
             )
@@ -405,7 +433,6 @@ fun IconButton(
 ) {
     Column {
 
-
         Button(
             onClick = onClick,
             modifier = modifier
@@ -413,7 +440,7 @@ fun IconButton(
                 .scale(0.65f),
             colors = ButtonDefaults.buttonColors(
                 buttonsColor,
-                contentColor = Color.White
+                contentColor = whiteColor
             )
         ) {
             Icon(
@@ -433,7 +460,7 @@ fun IconButton(
 
 @Composable
 fun NFCNotSupportedDialog() {
-//    val context = LocalContext.current
+
     var showDialog by remember { mutableStateOf(true) }
 
     if (showDialog) {
@@ -463,36 +490,37 @@ fun PromptToEnableNFCDialog() {
             text = { Text(stringResource(R.string.nfc_disabled_prompt)) },
 
 
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            showDialog = false
-                            context.startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            buttonsColor,
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text(stringResource(R.string.enable_nfc))
-                    }
-                },
-                dismissButton = {
-                    Button(
-                        onClick = {
-                            showDialog = false
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            buttonsColor,
-                            contentColor = Color.White
-                        )
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDialog = false
+                        context.startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        buttonsColor,
+                        contentColor = Color.White
                     )
-                    {
-                        Text(stringResource(R.string.cancel))
-                    }
+                ) {
+                    Text(stringResource(R.string.enable_nfc))
                 }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        showDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        buttonsColor,
+                        contentColor = Color.White
+                    )
+                )
+                {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
 
         )
     }
 }
+
 
