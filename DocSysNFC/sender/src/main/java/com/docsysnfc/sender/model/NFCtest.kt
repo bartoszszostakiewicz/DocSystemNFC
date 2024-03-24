@@ -5,19 +5,18 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
+import android.nfc.NdefRecord.createUri
 import android.nfc.NfcAdapter
 import android.nfc.cardemulation.HostApduService
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import androidx.annotation.RequiresApi
 import com.docsysnfc.sender.MainActivity
 import java.io.UnsupportedEncodingException
 import java.math.BigInteger
-
-
 
 
 class NFCtest: HostApduService() {
@@ -123,6 +122,8 @@ class NFCtest: HostApduService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
+       //activity visible porownoac z gita
+
         if (intent?.hasExtra("ndefMessage")!!) {
             NDEF_URI =
                 NdefMessage(createTextRecord("en", intent.getStringExtra("ndefMessage")!!, NDEF_ID))
@@ -143,8 +144,6 @@ class NFCtest: HostApduService() {
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray {
 
-
-
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         val senderMode = prefs.getBoolean("senderMode", true)
 
@@ -163,7 +162,6 @@ class NFCtest: HostApduService() {
             }
 
             startActivity(intent)
-
         }
         //
         // First command: NDEF Tag Application select (Section 5.5.2 in NFC Forum spec)
@@ -291,7 +289,7 @@ class NFCtest: HostApduService() {
         )
 
         //important funcion
-        return NdefRecord(NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_URI, id, recordPayload)
+        return NdefRecord(NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_TEXT, id, recordPayload)
     }
 
     private fun fillByteArrayToFixedDimension(array: ByteArray, fixedSize: Int): ByteArray {

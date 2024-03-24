@@ -2,7 +2,9 @@ package com.docsysnfc.sender.ui
 
 import android.app.Activity
 import android.content.Context
+import android.nfc.tech.IsoDep
 import android.nfc.tech.Ndef
+import android.nfc.tech.NfcA
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -26,7 +28,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -57,9 +58,99 @@ import com.docsysnfc.sender.ui.theme.whiteColor
 import java.nio.charset.Charset
 
 
+val APDU_SELECT = byteArrayOf(
+    0x00.toByte(), // CLA	- Class - Class of instruction
+    0xA4.toByte(), // INS	- Instruction - Instruction code
+    0x04.toByte(), // P1	- Parameter 1 - Instruction parameter 1
+    0x00.toByte(), // P2	- Parameter 2 - Instruction parameter 2
+    0x07.toByte(), // Lc field	- Number of bytes present in the data field of the command
+    0xD2.toByte(),
+    0x76.toByte(),
+    0x00.toByte(),
+    0x00.toByte(),
+    0x85.toByte(),
+    0x01.toByte(),
+    0x01.toByte(), // NDEF Tag Application name
+    0x00.toByte(), // Le field	- Maximum number of bytes expected in the data field of the response to the command
+)
+
+val CAPABILITY_CONTAINER_OK = byteArrayOf(
+    0x00.toByte(), // CLA	- Class - Class of instruction
+    0xa4.toByte(), // INS	- Instruction - Instruction code
+    0x00.toByte(), // P1	- Parameter 1 - Instruction parameter 1
+    0x0c.toByte(), // P2	- Parameter 2 - Instruction parameter 2
+    0x02.toByte(), // Lc field	- Number of bytes present in the data field of the command
+    0xe1.toByte(),
+    0x03.toByte(), // file identifier of the CC file
+)
+
+val READ_CAPABILITY_CONTAINER = byteArrayOf(
+    0x00.toByte(), // CLA	- Class - Class of instruction
+    0xb0.toByte(), // INS	- Instruction - Instruction code
+    0x00.toByte(), // P1	- Parameter 1 - Instruction parameter 1
+    0x00.toByte(), // P2	- Parameter 2 - Instruction parameter 2
+    0x0f.toByte(), // Lc field	- Number of bytes present in the data field of the command
+)
+
+// In the scenario that we have done a CC read, the same byte[] match
+// for ReadBinary would trigger and we don't want that in succession
+var READ_CAPABILITY_CONTAINER_CHECK = false
+
+val READ_CAPABILITY_CONTAINER_RESPONSE = byteArrayOf(
+    0x00.toByte(), 0x11.toByte(), // CCLEN length of the CC file
+    0x20.toByte(), // Mapping Version 2.0
+    0xFF.toByte(), 0xFF.toByte(), // MLe maximum
+    0xFF.toByte(), 0xFF.toByte(), // MLc maximum
+    0x04.toByte(), // T field of the NDEF File Control TLV
+    0x06.toByte(), // L field of the NDEF File Control TLV
+    0xE1.toByte(), 0x04.toByte(), // File Identifier of NDEF file
+    0xFF.toByte(), 0xFE.toByte(), // Maximum NDEF file size of 65534 bytes
+    0x00.toByte(), // Read access without any security
+    0xFF.toByte(), // Write access without any security
+    0x90.toByte(), 0x00.toByte(), // A_OKAY
+)
+
+val NDEF_SELECT_OK = byteArrayOf(
+    0x00.toByte(), // CLA	- Class - Class of instruction
+    0xa4.toByte(), // Instruction byte (INS) for Select command
+    0x00.toByte(), // Parameter byte (P1), select by identifier
+    0x0c.toByte(), // Parameter byte (P1), select by identifier
+    0x02.toByte(), // Lc field	- Number of bytes present in the data field of the command
+    0xE1.toByte(),
+    0x04.toByte(), // file identifier of the NDEF file retrieved from the CC file
+)
+
+val NDEF_READ_BINARY = byteArrayOf(
+    0x00.toByte(), // Class byte (CLA)
+    0xb0.toByte(), // Instruction byte (INS) for ReadBinary command
+)
+
+val NDEF_READ_BINARY_NLEN = byteArrayOf(
+    0x00.toByte(), // Class byte (CLA)
+    0xb0.toByte(), // Instruction byte (INS) for ReadBinary command
+    0x00.toByte(),
+    0x00.toByte(), // Parameter byte (P1, P2), offset inside the CC file
+    0x02.toByte(), // Le field
+)
+
+val A_OKAY = byteArrayOf(
+    0x90.toByte(), // SW1	Status byte 1 - Command processing status
+    0x00.toByte(), // SW2	Status byte 2 - Command processing qualifier
+)
+
+val A_ERROR = byteArrayOf(
+    0x6A.toByte(), // SW1	Status byte 1 - Command processing status
+    0x82.toByte(), // SW2	Status byte 2 - Command processing qualifier
+)
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
+
+//    val authenticationState by viewModel.authenticationState.collectAsState()
+//
+//    if(authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN){
+//        navController.navigate(NFCSysScreen.Login.name)
+//    }
 
     setSenderMode(context, false)
     viewModel.enableNFCReaderMode(context as Activity)
@@ -83,13 +174,13 @@ fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, contex
     val nfcTag = viewModel.nfcTag.collectAsState()
 
     LaunchedEffect(nfcTag.value) {
-        nfcTag.value?.let {
+        nfcTag.value?.let {tag ->
             try {
-                val ndef = Ndef.get(it)
+                // Spróbuj odczytać jako NDEF
+                val ndef = Ndef.get(tag)
                 ndef?.connect()
                 val ndefMessage = ndef?.ndefMessage
-
-                if (ndefMessage != null && ndefMessage.records.isNotEmpty()) {
+                if (ndefMessage != null) {
                     val payload = ndefMessage.records[0].payload
                     val payloadStr = String(payload, Charset.forName("UTF-8"))
 
@@ -98,6 +189,38 @@ fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, contex
                     viewModel.downloadFile(payloadStr, context)
                 }
                 ndef?.close()
+
+                var isoDep: IsoDep? = null
+                // Jeśli nie udało się jako NDEF, spróbuj jako IsoDep
+                if (ndefMessage == null) {
+                    isoDep = IsoDep.get(tag)
+                    isoDep?.connect()
+                    // Wyślij komendę APDU, aby odczytać dane
+                    // Na przykład SELECT AID komenda dla aplikacji smartcard
+                    val command =READ_CAPABILITY_CONTAINER // konkretna komenda APDU
+                    val response = isoDep?.transceive(command)?.clone()
+                    Log.d("NFC123", "Response: ${response.toString()}")
+                    if (response != null) {
+                        val isoDepStr = String(response, Charset.forName("UTF-8"))
+                        Log.d("NFC123", "IsoDep Payload: $isoDepStr")
+                    }
+                    isoDep?.close()
+                }
+
+                // Jeśli inne metody zawiodły, spróbuj jako NfcA
+                if (ndefMessage == null && isoDep == null) {
+                    val nfcA = NfcA.get(tag)
+                    nfcA?.connect()
+                    // Wyślij surową komendę, aby odczytać dane
+                    val command = READ_CAPABILITY_CONTAINER // konkretna komenda dla NfcA
+                    val response = nfcA?.transceive(command)?.clone()
+                    Log.d("NFC123", "Response: ${response.toString()}")
+                    if (response != null) {
+                        val nfcAStr = String(response, Charset.forName("UTF-8"))
+                        Log.d("NFC123", "NfcA Payload: $nfcAStr")
+                    }
+                    nfcA?.close()
+                }
             } catch (e: Exception) {
                 viewModel.setDownloadStatus(false)
                 showDialog.value = true
@@ -146,8 +269,19 @@ fun FileCard(
     context: Context,
 ) {
 
-    var isCipher by rememberSaveable { mutableStateOf(false) }
+//    var isCipher = rememberSaveable { mutableStateOf(file.isCipher) }
+//    Log.d("NFC123", "isCipher: ${isCipher.value} for ${file.name}")
 
+//    LaunchedEffect(file.isCipher) {
+//        isCipher.value = file.isCipher
+//    }
+
+
+    val isCipher = rememberSaveable { mutableStateOf(file.isCipher) }
+    LaunchedEffect(file) {
+        isCipher.value = file.isCipher
+        Log.d("NFC123", "isCipher: ${isCipher.value} for ${file.name} file uri: ${file.uri}")
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = tilesColor),
@@ -199,7 +333,7 @@ fun FileCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Row {
-                if (file.encryption) {
+                if (file.encryptionState) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
@@ -216,24 +350,26 @@ fun FileCard(
                                 buttonsColor,
                                 contentColor = whiteColor
                             ),
+                            enabled = !isCipher.value
                         ) {
                             Text(text = "Open")
                         }
                     }
                 }
-
-                Icon(
-                    painter = painterResource(if (isCipher) R.drawable.cipher_on else R.drawable.cipher_off),
-                    contentDescription = "Icon",
-                    modifier = Modifier
-                        .padding(start = 100.dp)
-                        .size(50.dp)
-                        .align(Alignment.CenterVertically)
-                        .clickable {
-                            isCipher = !isCipher
-                            viewModel.handleEncryption(file, false, true)
-                        }
-                )
+                if(isCipher.value) {
+                    Icon(
+                        painter = painterResource(if (isCipher.value) R.drawable.cipher_on else R.drawable.cipher_off),
+                        contentDescription = "Icon",
+                        modifier = Modifier
+                            .padding(start = 100.dp)
+                            .size(50.dp)
+                            .align(Alignment.CenterVertically)
+                            .clickable {
+                                isCipher.value = !isCipher.value
+                                viewModel.handleEncryption(file, false, true)
+                            }
+                    )
+                }
             }
         }
     }

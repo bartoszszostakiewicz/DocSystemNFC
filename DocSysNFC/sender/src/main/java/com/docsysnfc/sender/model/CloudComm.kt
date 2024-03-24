@@ -90,9 +90,16 @@ class CloudComm(
             ) {
 
                 // Tworzenie pliku lokalnego
-                val downloadsFolder = Environment.getExternalStoragePublicDirectory(folderName)
+                val downloadsFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val docSysNfcFolder = java.io.File(downloadsFolder, "DocSysNFC")
+
+                // Sprawdzenie czy katalog istnieje, jeśli nie - próba utworzenia
+                if (!docSysNfcFolder.exists()) {
+                    docSysNfcFolder.mkdirs()
+                }
+
                 var localFile = java.io.File(
-                    downloadsFolder,
+                    docSysNfcFolder,
                     fileName + FileManager.getExtensionFromMimeType(mimeType)
                 )
 
@@ -276,9 +283,9 @@ class CloudComm(
         }
 
         val fileRef =
-            firebaseStorage.reference.child("images/${auth.currentUser!!.uid}/test/$fileName")
+            firebaseStorage.reference.child("files/${auth.currentUser!!.uid}/$fileName")
 
-        val byteArray = if (cipher) selectedFile?.encryptedByteArray else selectedFile?.byteArray
+        val byteArray = if (cipher) selectedFile?.encryptedByteArray else null
         byteArray?.let {
             if (it.isNotEmpty()) {
                 fileRef.putBytes(it).addOnSuccessListener {
@@ -300,6 +307,25 @@ class CloudComm(
                 onUrlAvailable("Error: ByteArray is empty")
             }
         } ?: run {
+            selectedFile?.let {file ->
+                fileRef.putFile(file.uri).addOnSuccessListener {
+                    // Po udanym przesłaniu pliku, pobierz jego URL
+                    fileRef.downloadUrl.addOnSuccessListener { uri ->
+                        val downloadUrl = uri.toString()
+                        selectedFile.url = URL(downloadUrl)
+                        onUrlAvailable(downloadUrl)
+                    }.addOnFailureListener { exception ->
+                        Log.d("TAG123", "onCreatexd: $exception")
+                        onUrlAvailable("Error: $exception")
+                    }
+                }.addOnFailureListener {
+                    Log.d("TAG123", "Upload failure: $it")
+                    onUrlAvailable("Error: Upload failure: $it")
+                }
+            } ?: run {
+                Log.d("TAG123", "Selected file is null")
+                onUrlAvailable("Error: Selected file is null")
+            }
             Log.d("TAG123", "Selected file or byteArray is null")
             onUrlAvailable("Error: Selected file or byteArray is null")
         }
@@ -316,7 +342,7 @@ class CloudComm(
         }
 
         val fileRef =
-            firebaseStorage.reference.child("images/${auth.currentUser?.uid}/test/${file.name}")
+            firebaseStorage.reference.child("files/${auth.currentUser!!.uid}/${file.name}")
 
         fileRef.delete().addOnSuccessListener {
             Log.d("nfc123", "File deleted")

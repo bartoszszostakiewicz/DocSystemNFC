@@ -4,6 +4,9 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.nfc.NdefMessage
+import android.nfc.NdefRecord
+import android.nfc.NfcAdapter
 import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
@@ -21,6 +24,7 @@ import com.docsysnfc.sender.model.NFCSysScreen
 import com.docsysnfc.sender.model.NFCtest
 import com.docsysnfc.sender.ui.AppNavigation
 import kotlinx.coroutines.launch
+import java.util.Arrays
 
 
 private const val TAG = "NFC123"
@@ -41,7 +45,7 @@ class MainActivity : ComponentActivity() {
             val policy = ThreadPolicy.Builder()
                 .permitAll().build()
             StrictMode.setThreadPolicy(policy)
-            //your codes here
+
         }
 
         val destinationName = intent.getStringExtra("destinationId")
@@ -82,6 +86,9 @@ class MainActivity : ComponentActivity() {
         startService(intent)
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -97,6 +104,8 @@ class MainActivity : ComponentActivity() {
             putBoolean("isActivityVisible", true)
             apply()
         }
+
+
 
     }
 

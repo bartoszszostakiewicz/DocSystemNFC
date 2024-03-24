@@ -10,5 +10,6 @@ enum class NFCSysScreen(@StringRes val title: Int) {
     Login(title = R.string.login_screen),
     Create(title = R.string.create_screen),
     Recovery(title = R.string.recovery_screen),
-    TrustedDevices(title = R.string.trusted_devices)
+    TrustedDevices(title = R.string.trusted_devices),
+    Settings(title = R.string.settings),
 }

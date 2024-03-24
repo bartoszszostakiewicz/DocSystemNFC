@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +32,8 @@ import com.docsysnfc.sender.MainViewModel
 import com.docsysnfc.sender.model.CreateAccountState
 import com.docsysnfc.sender.model.NFCSysScreen
 import com.docsysnfc.sender.ui.theme.backgroundColor
+import com.docsysnfc.sender.ui.theme.buttonsColor
+import com.docsysnfc.sender.ui.theme.whiteColor
 
 @Composable
 fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
@@ -110,6 +113,10 @@ fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, 
                         //and add information about the account creation
                     }
                 },
+                colors = ButtonDefaults.buttonColors(
+                    buttonsColor,
+                    contentColor = whiteColor
+                ),
                 modifier = Modifier.fillMaxWidth(),
                 enabled = isFormValid
             ) {

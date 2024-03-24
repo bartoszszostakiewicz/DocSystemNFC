@@ -53,6 +53,7 @@ import com.docsysnfc.sender.ui.theme.clickableTextColor
 import com.docsysnfc.sender.ui.theme.outlineTextFieldCursorColor
 import com.docsysnfc.sender.ui.theme.outlineTextFieldFocusedBorderColor
 import com.docsysnfc.sender.ui.theme.outlineTextFieldUnfocusedBorderColor
+import com.docsysnfc.sender.ui.theme.textColor
 import com.docsysnfc.sender.ui.theme.whiteColor
 
 
@@ -62,9 +63,9 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
 
     viewModel.disableNFCReaderMode(context as Activity)
 
-    val authenticationState by viewModel.authenticationState.collectAsState()
+    val authenticationState =  viewModel.authenticationState.collectAsState().value
 
-    if (viewModel.isUserAuthenticated) {
+    if (authenticationState == AuthenticationState.SUCCESS) {
         navController.navigate(NFCSysScreen.Home.name)
     }
 
@@ -241,7 +242,12 @@ fun CustomTextField(
     OutlinedTextField(
         value = text,
         onValueChange = onTextChange,
-        label = { Text(label) },
+        label = {
+            Text(
+                label,
+                color = textColor
+            )
+                },
         colors = TextFieldDefaults.outlinedTextFieldColors(
             focusedBorderColor = outlineTextFieldFocusedBorderColor,
             unfocusedBorderColor = outlineTextFieldUnfocusedBorderColor,

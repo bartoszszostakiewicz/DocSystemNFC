@@ -31,7 +31,7 @@
     <string name="cloud">Cloud</string>
     <string name="colon">": "</string>
     <string name="choose_file">Choose file</string>
-    <string name="create_account">Create</string>
+    <string name="create_account">Create account</string>
     <string name="repeat_password">Repeat password</string>
     <string name="email">Email</string>
     <string name="send_file">Send</string>
@@ -44,4 +44,13 @@
     <string name="separator">//</string>
     <string name="downloading">Downloading file ...</string>
     <string name="received_file">Received files</string>
+    <string name="settings">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="delete_account">Delete Account</string>
+    <string name="delete_confirm">Delete</string>
+    <string name="delete_account_confirm">Confirm Deletion</string>
+    <string name="delete_account_desc">Are you sure you want to delete your account? This action cannot be undone.</string>
+    <string name="wrong_password">Password is incorrect. Please try again.</string>
+    <string name="delete_account_success">Account successfully deleted</string>
+    <string name="additional_encryption_info">Enabling this option will prolong the communication process; however, it will make the communication more secure.</string>
 </resources>

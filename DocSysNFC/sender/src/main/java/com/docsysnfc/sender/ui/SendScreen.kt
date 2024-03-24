@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,7 +47,9 @@ import androidx.core.content.edit
 import androidx.navigation.NavController
 import com.docsysnfc.R
 import com.docsysnfc.sender.MainViewModel
+import com.docsysnfc.sender.model.AuthenticationState
 import com.docsysnfc.sender.model.File
+import com.docsysnfc.sender.model.NFCSysScreen
 import com.docsysnfc.sender.ui.theme.backgroundColor
 import com.docsysnfc.sender.ui.theme.fileIsNotInCloudColor
 import com.docsysnfc.sender.ui.theme.sendingFileColor
@@ -88,6 +91,13 @@ fun SendScreen(
     context: Context,
     index: Int
 ) {
+
+//    val authenticationState by viewModel.authenticationState.collectAsState()
+//
+//    if(authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN){
+//        navController.navigate(NFCSysScreen.Login.name)
+//    }
+
     viewModel.disableNFCReaderMode(context as Activity)
 
     /************TODO ADD VIBRATION during sending files***************/

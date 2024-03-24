@@ -57,9 +57,16 @@ fun AppNavigation(viewModel: MainViewModel, context: Context) {
                         context
                     )
         }
+
+        composable(NFCSysScreen.Settings.name) {
+            SettingsScreen(
+                navController,
+                viewModel,
+                context
+            )
+        }
     }
 }
-
 
 
 

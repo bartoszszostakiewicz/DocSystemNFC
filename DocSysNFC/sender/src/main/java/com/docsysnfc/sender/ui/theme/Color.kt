@@ -30,6 +30,7 @@ val Red40 = Color(0xFFD61C1C)
 
 
 val buttonsColor = Color(0xFF276194)
+val deleteButtonsColor = Color(0xFFF30623)
 val backgroundColor = Color(0xFFDEF2FD)
 val tilesColor = Color(0xFF6CB7F9)
 val backgroundColor2 = Color(0xFFDFE9F1)
@@ -39,6 +40,9 @@ val blackTextColor = Color(0xFF161515)
 val appBarColorTheme = Color(0xA153ABF0)
 val sendingFileColor = Color(0xA18CF4F7)
 val fileIsNotInCloudColor = Color(0xFF616464)
+
+val textColor = Color(0xFF111111)
+val buttonsOffColor = Color(0xFF7C7977)
 
 val outlineTextFieldFocusedBorderColor = Color(0xFF070606)
 val outlineTextFieldUnfocusedBorderColor = Color(0xFF4E4949)

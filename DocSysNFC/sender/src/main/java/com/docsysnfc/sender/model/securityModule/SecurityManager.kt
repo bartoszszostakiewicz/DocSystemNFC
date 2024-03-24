@@ -25,14 +25,39 @@ class SecurityManager(
 
 
     /**
-     * Encrypts data with AES and RSA
+     * Encrypts data with AES
      * @param data the data to be encrypted
      * @param publicKey the public key to encrypt the data with
-     * @return a pair of encrypted data and the AES key used to encrypt the data
+     * @return the encrypted data
      */
-    fun encryptDataWithAESAndRSA(data: ByteArray, publicKey: String): Pair<ByteArray, ByteArray> {
-        return encryption.encryptDataUsingHybridEncryption(data, publicKey)
+    fun encryptDataRSA(data: ByteArray, publicKey: String): ByteArray {
+        val keyFactory = KeyFactory.getInstance("RSA")
+        val keySpec = X509EncodedKeySpec(Base64.getDecoder().decode(publicKey))
+        val key = keyFactory.generatePublic(keySpec)
+
+        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+
+        return cipher.doFinal(data)
     }
+
+    /**
+     * Decrypts data with RSA
+     * @param encryptedData the data to be decrypted
+     * @param privateKey the private key to decrypt the data with
+     * @return the decrypted data
+     */
+    fun decryptDataRSA(encryptedData: ByteArray, privateKey: String): ByteArray {
+        val keyFactory = KeyFactory.getInstance("RSA")
+        val keySpec = PKCS8EncodedKeySpec(Base64.getDecoder().decode(privateKey))
+        val key = keyFactory.generatePrivate(keySpec)
+
+        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+        cipher.init(Cipher.DECRYPT_MODE, key)
+
+        return cipher.doFinal(encryptedData)
+    }
+
 
     /**
      * Encrypts data with AES
@@ -48,8 +73,8 @@ class SecurityManager(
         val iv = ByteArray(16)
         SecureRandom().nextBytes(iv)
         val ivSpec = IvParameterSpec(iv)
-        Log.d("nfc1234","ivSpec: ${ivSpec.iv}")
-        Log.d("nfc1234","Len ivSpec iv: ${ivSpec.iv.size}")
+        Log.d("nfc1234", "ivSpec: ${ivSpec.iv}")
+        Log.d("nfc1234", "Len ivSpec iv: ${ivSpec.iv.size}")
 
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
         val encryptedData = cipher.doFinal(data)
@@ -68,16 +93,11 @@ class SecurityManager(
     fun decryptDataAES(encryptedData: ByteArray, secretKey: SecretKey, iv: ByteArray): ByteArray {
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         val ivSpec = IvParameterSpec(iv)
-        Log.d("nfc1234","ivSpec: ${ivSpec.iv}")
-        Log.d("nfc1234","Len ivSpec iv: ${ivSpec.iv.size}")
+        Log.d("nfc1234", "ivSpec: ${ivSpec.iv}")
+        Log.d("nfc1234", "Len ivSpec iv: ${ivSpec.iv.size}")
         cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
-//        if (encryptedData.size % 16 != 0) {
-//            val requiredPadding = 16 - (encryptedData.size % 16)
-//            val paddedData = encryptedData + ByteArray(requiredPadding) // Dopełnienie zerami
-//            Log.d("nfc1234", "Długość danych zaszyfrowanych nie jest wielokrotnością rozmiaru bloku AES (16 bajtów). Dodano dopełnienie zerami.")
-//
-//          return cipher.doFinal(paddedData)
-//        }
+
+
         return cipher.doFinal(encryptedData)
     }
 }

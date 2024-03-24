@@ -66,6 +66,7 @@ import androidx.wear.compose.material.rememberSwipeableState
 import androidx.wear.compose.material.swipeable
 import com.docsysnfc.R
 import com.docsysnfc.sender.MainViewModel
+import com.docsysnfc.sender.model.AuthenticationState
 import com.docsysnfc.sender.model.File
 import com.docsysnfc.sender.model.NFCStatus
 import com.docsysnfc.sender.model.NFCSysScreen
@@ -332,6 +333,12 @@ fun ChooseFileButton(
 @Composable
 fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
 
+    val authenticationState by viewModel.authenticationState.collectAsState()
+
+    if(authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN){
+        navController.navigate(NFCSysScreen.Login.name)
+    }
+
     viewModel.disableNFCReaderMode(context as Activity)
 
 
@@ -397,10 +404,10 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
                 )
                 IconButton(
                     onClick = {
-
+                        navController.navigate(NFCSysScreen.Settings.name)
                     },
-                    iconId = R.drawable.trust3,
-                    contentDescription = context.resources.getString(R.string.trusted_devices),
+                    iconId = R.drawable.settings2,
+                    contentDescription = context.resources.getString(R.string.settings),
                     modifier = Modifier.padding(1.dp)
                 )
 

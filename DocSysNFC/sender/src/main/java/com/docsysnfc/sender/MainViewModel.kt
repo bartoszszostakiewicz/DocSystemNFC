@@ -22,7 +22,6 @@ import com.docsysnfc.sender.model.FileManager
 import com.docsysnfc.sender.model.NFCComm
 import com.docsysnfc.sender.model.NFCStatus
 import com.docsysnfc.sender.model.NFCSysScreen
-import com.docsysnfc.sender.model.UrlCallback
 import com.docsysnfc.sender.model.securityModule.RSAEncryption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +29,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.net.URL
 import com.docsysnfc.sender.model.securityModule.SecurityManager
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Base64
 import javax.crypto.spec.SecretKeySpec
@@ -78,8 +79,6 @@ class MainViewModel(
     val activeURL = _activeURL.asStateFlow()
 
 
-
-
     //probalby to delete
     private val _isActivityVisible = MutableStateFlow(true)
     val isActivityVisible = _isActivityVisible.asStateFlow()
@@ -99,28 +98,42 @@ class MainViewModel(
     val nfcTag: StateFlow<Tag?> = _nfcTag.asStateFlow()
 
 
-    val isUserAuthenticated: Boolean
-        get() = auth.currentUser != null
-
     init {
+        nfcComm.initNFCAdapter(context)
         //every 1 second we are checking the nfc status
         viewModelScope.launch {
-            while (true) {
-                Log.d("NFC1235", "Active url =  ${_activeURL.value}")
-                kotlinx.coroutines.delay(1000)
-            }
-        }
-        _authenticationState.value =
-            if (isUserAuthenticated) AuthenticationState.SUCCESS else AuthenticationState.FAILURE
 
-        nfcComm.initNFCAdapter(context)
+            while (true) {
+
+//                Log.d("NFC1235", "Active url =  ${_activeURL.value}")
+                kotlinx.coroutines.delay(1000)
+                if (auth.currentUser != null) {
+//                    Log.d("NFC123", "User is authenticated ${auth.currentUser?.email}")
+                    _authenticationState.value = AuthenticationState.SUCCESS
+                    _navigationDestination.value = NFCSysScreen.Home
+
+                } else {
+//                    Log.d("NFC123", "User is not authenticated")
+                    _authenticationState.value = AuthenticationState.FAILURE
+                    _navigationDestination.value = NFCSysScreen.Login
+
+                }
+            }
+//            _authenticationState.value =
+//                if (isUserAuthenticated) AuthenticationState.SUCCESS else AuthenticationState.FAILURE
+
+
+
+        }
     }
 
     fun setActivityVisibility(isVisible: Boolean) {
         _isActivityVisible.value = isVisible
     }
 
-
+    fun logOff() {
+        navigationDestination.value = NFCSysScreen.Login
+    }
 
     fun setFileIsCipher(isCipher: Boolean) {
         _fileIsCipher.value = isCipher
@@ -185,10 +198,10 @@ class MainViewModel(
 
         auth.signInWithEmailAndPassword(email, password).addOnCompleteListener {
             if (it.isSuccessful) {
-                Log.d("qwertty", "1signInWithEmail:success")
+                //Log.d("qwertty", "1signInWithEmail:success")
                 _authenticationState.value = AuthenticationState.SUCCESS
             } else {
-                Log.w("qwertty", "signInWithEmail:failure", it.exception)
+                //Log.w("qwertty", "signInWithEmail:failure", it.exception)
                 _authenticationState.value = AuthenticationState.FAILURE
             }
         }.isSuccessful
@@ -241,7 +254,7 @@ class MainViewModel(
     }
 
     fun disableNFCReaderMode(activity: Activity) {
-        nfcComm.disableNFCReader(activity)
+//        nfcComm.disableNFCReader(activity)
     }
 
 
@@ -285,7 +298,8 @@ class MainViewModel(
                 }
 
 
-            val fileByteArray = FileManager.fileToByteArray(context, fileUri,false) ?: ByteArray(0)
+            val fileByteArray =
+                FileManager.fileToByteArray(context, fileUri, false) ?: ByteArray(0)
 
             var fileSize = 0.0
 
@@ -321,13 +335,20 @@ class MainViewModel(
                 fileSize,
                 mimeType.toString(),
                 URL("https://www.google.com"),
-                fileByteArray,//change t byte array in filemanager is a function to convert file to byte array
+                fileByteArray,
+                ByteArray(0),
+                "",
+                "",
+                encryptionState = false
+
             )
 
-            if(parts.size == 3){
-                downloadedFile.encryptedByteArray = FileManager.fileToByteArray(context, fileUri,false)!!
+            if (parts.size == 3) {
+                downloadedFile.encryptedByteArray =
+                    FileManager.fileToByteArray(context, fileUri, false)!!
                 downloadedFile.secretKey = parts[1]
                 downloadedFile.iV = parts[2]
+                downloadedFile.isCipher = true
             }
 
             Log.d(
@@ -433,54 +454,64 @@ class MainViewModel(
     }
 
     //zakladamy ze bytearray jest wypelnione
-    fun handleEncryption(file: File, encryption: Boolean,reading:Boolean = false) {
+    fun handleEncryption(file: File, encryption: Boolean, reading: Boolean = false) {
         viewModelScope.launch {
             Log.d("TAG123", "Plik ${file.name}: ${file.byteArray.size} bajtów")
 
             if (encryption && file.encryptedByteArray.isEmpty()) {
                 val startTime = System.currentTimeMillis()
-                file.encryption = true
+                file.encryptionState = true
 
                 val encryptedPack = securityManager.encryptDataAES(file.byteArray)
                 file.encryptedByteArray = encryptedPack.first
-                file.secretKey = Base64.getEncoder().encodeToString(encryptedPack.second.encoded)
+                file.secretKey =
+                    Base64.getEncoder().encodeToString(encryptedPack.second.encoded)
                 file.iV = Base64.getEncoder().encodeToString(encryptedPack.third)
 
                 Log.d("NFC1234", "Len of encrypted data: ${file.encryptedByteArray.size}")
-                Log.d("NFC1234", "First ten bytes of encrypted data: ${file.encryptedByteArray.take(10)}")
+                Log.d(
+                    "NFC1234",
+                    "First ten bytes of encrypted data: ${file.encryptedByteArray.take(10)}"
+                )
                 Log.d("NFC1234", "IV LEN ${file.iV.length} ")
-                Log.d("NFC1234","Data LEN  = ${file.encryptedByteArray.size}")
-                Log.d("NFC1234","IV = ${file.iV.toString()}")
-                Log.d("NFC1234","${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
+                Log.d("NFC1234", "Data LEN  = ${file.encryptedByteArray.size}")
+                Log.d("NFC1234", "IV = ${file.iV.toString()}")
+                Log.d("NFC1234", "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
 
-                file.encryption = false
+                file.encryptionState = false
                 val endTime = System.currentTimeMillis()
                 val duration = endTime - startTime
                 Log.d("NFC1234", "Czas operacji szyfrowania: $duration ms")
 
             } else if (reading && file.encryptedByteArray.isNotEmpty()) {
                 val startTime = System.currentTimeMillis()
-                file.encryption = true
+                file.encryptionState = true
                 val decodedKey = Base64.getDecoder().decode(file.secretKey)
-                val originalKey = SecretKeySpec(decodedKey,0, decodedKey.size, "AES")
+                val originalKey = SecretKeySpec(decodedKey, 0, decodedKey.size, "AES")
                 val decodedData = file.encryptedByteArray
                 val decodedIV = Base64.getDecoder().decode(file.iV)
 
 
                 Log.d("NFC1234", "Len of encrypted data: ${file.encryptedByteArray.size}")
-                Log.d("NFC1234", "First ten bytes of encrypted data: ${file.encryptedByteArray.take(10)}")
+                Log.d(
+                    "NFC1234",
+                    "First ten bytes of encrypted data: ${file.encryptedByteArray.take(10)}"
+                )
                 Log.d("NFC1234", "IV LEN ${file.iV.length} ")
-                Log.d("NFC1234","IV = ${file.iV}")
-                Log.d("NFC1234","${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
+                Log.d("NFC1234", "IV = ${file.iV}")
+                Log.d("NFC1234", "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
 
                 //tutaj muszisz poinformować o tym ze plik zostal odszyfrowany moze callback
-                val decryptedData = securityManager.decryptDataAES(decodedData, originalKey, decodedIV)
+                val decryptedData =
+                    securityManager.decryptDataAES(decodedData, originalKey, decodedIV)
 
 
                 file.byteArray = decryptedData
 
-                //now we need override file in downloads loacation on phone
+
                 val tmpFile = FileManager.byteArrayToFile(context, file.byteArray, file.name)
+                FileManager.deleteFile(file, context)
+
 
                 if(tmpFile.name.isNotEmpty()){
                     //zastanow sie co tu masz nadpisaiwac
@@ -492,7 +523,10 @@ class MainViewModel(
                 }
 
 
-                file.encryption = false
+
+
+
+                file.encryptionState = false
                 val endTime = System.currentTimeMillis()
                 val duration = endTime - startTime
                 Log.d("NFC1234", "Czas operacji deszyfrowania: $duration ms")
@@ -508,9 +542,10 @@ class MainViewModel(
         viewModelScope.launch {
 
             Log.d("TAG123", "Plik ${file.name}: ${file.byteArray.size} bajtów")
-            cloudComm.uploadFile(file, cipher,  onUrlAvailable = { url ->
+            cloudComm.uploadFile(file, cipher, onUrlAvailable = { url ->
                 if (cipher) {
-                    _activeURL.value = (url + R.string.separator + file.secretKey + R.string.separator + file.iV)
+                    _activeURL.value =
+                        (url + R.string.separator + file.secretKey + R.string.separator + file.iV)
                 } else {
                     _activeURL.value = url
                 }
@@ -519,7 +554,6 @@ class MainViewModel(
 
         }
     }
-
 
 
     fun deleteReceivedFile(file: File) {
@@ -537,7 +571,7 @@ class MainViewModel(
             if (file.url != URL("https://www.google.com")) {
                 cloudComm.deleteFile(file)
             }
-           // FileManager.deleteFile(file, context)
+            // FileManager.deleteFile(file, context)
             _modelSelectedFiles.update { currentFiles ->
                 currentFiles.filter { it != file }
             }
@@ -548,8 +582,40 @@ class MainViewModel(
         _uploadComplete.value = false
     }
 
+    fun reauthenticateAndDelete(password: String, onResult: (Boolean) -> Unit) {
+        val credential = EmailAuthProvider.getCredential(auth.currentUser?.email.toString(), password)
+        auth.currentUser?.reauthenticate(credential)
+            ?.addOnCompleteListener { reauthTask ->
+                if (reauthTask.isSuccessful) {
+                    Log.d("nfc123", "Re-authentication successful")
+                    deleteAccount()
+                    onResult(true)
+                } else {
+                    Log.d("nfc123", "Re-authentication failed")
+                    onResult(false)
+                }
+            }
+    }
 
+
+    fun deleteAccount() {
+
+        auth.currentUser?.delete()?.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.d("nfc123", "deleteAccount:success")
+            } else if (task.exception is FirebaseAuthRecentLoginRequiredException) {
+                Log.d("nfc123", "deleteAccount:reauthenticate")
+            } else {
+                Log.d("nfc123", "deleteAccount:failure")
+
+            }
+        }
+    }
 }
+
+
+
+
 
 
 

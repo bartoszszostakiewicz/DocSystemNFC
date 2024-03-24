@@ -90,7 +90,7 @@ class FileManager {
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc")
                 }
 
                 val resolver = context.contentResolver
@@ -102,7 +102,7 @@ class FileManager {
             } else {
                 // Starsze wersje Androida - bezpośredni zapis w folderze Downloads
                 val downloadsDir =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    Environment.getExternalStoragePublicDirectory("${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc")
                 val newFile = java.io.File(downloadsDir, fileName)
                 FileOutputStream(newFile).use { outputStream ->
                     outputStream.write(file)
@@ -113,6 +113,8 @@ class FileManager {
             // Zwróć Uri do zapisanego pliku
             return uriToSavedFile
         }
+
+
 
 
         //wyjebac to no extension to jest po to ze po pobraniu generuje jakiej randomowe exntesnion nie randomowe octet-stream pewnie i to wywala odkomentiowywanie

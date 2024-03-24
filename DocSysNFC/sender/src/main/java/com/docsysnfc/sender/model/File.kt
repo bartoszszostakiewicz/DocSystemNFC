@@ -2,7 +2,6 @@ package com.docsysnfc.sender.model
 
 import android.net.Uri
 import java.net.URL
-import javax.crypto.SecretKey
 
 data class File(
     var name: String,
@@ -15,7 +14,9 @@ data class File(
     var encryptedByteArray: ByteArray = ByteArray(0),
     var secretKey: String = "",
     var iV: String = "",
-    var encryption:Boolean = false
+    var encryptionState:Boolean = false,
+    var publicKey : String = "",
+    var isCipher: Boolean = false,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
