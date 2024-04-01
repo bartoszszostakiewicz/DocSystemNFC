@@ -18,7 +18,6 @@ class NFCtest: HostApduService() {
 
     private val TAG = "NFC123"
 
-    //change aid aplication here and in xml file
     private val APDU_SELECT = byteArrayOf(
         0x00.toByte(), // CLA	- Class - Class of instruction
         0xA4.toByte(), // INS	- Instruction - Instruction code
@@ -176,6 +175,7 @@ class NFCtest: HostApduService() {
         //
         // Third command: ReadBinary data from CC file (Section 5.5.4 in NFC Forum spec)
         //
+
         if (READ_CAPABILITY_CONTAINER.contentEquals(commandApdu) && !READ_CAPABILITY_CONTAINER_CHECK
         ) {
             Log.i(
@@ -207,9 +207,10 @@ class NFCtest: HostApduService() {
         }
 
         if (commandApdu.sliceArray(0..1).contentEquals(NDEF_READ_BINARY)) {
-            val offset = commandApdu.sliceArray(2..3).toHex().toInt(16)
-            val length = commandApdu.sliceArray(4..4).toHex().toInt(16)
-
+//            val offset = commandApdu.sliceArray(2..3).toHex().toInt(16)
+            val offset = 2
+//            val length = commandApdu.sliceArray(4..4).toHex().toInt(16)
+            val length = 204
             val fullResponse = ByteArray(NDEF_URI_LEN.size + NDEF_URI_BYTES.size)
             System.arraycopy(NDEF_URI_LEN, 0, fullResponse, 0, NDEF_URI_LEN.size)
             System.arraycopy(
@@ -233,6 +234,7 @@ class NFCtest: HostApduService() {
             System.arraycopy(A_OKAY, 0, response, realLength, A_OKAY.size)
 
             Log.i(TAG, "NDEF_READ_BINARY triggered. Our Response: " + fullResponse.toHex())
+            Log.i(TAG, "NDEF_READ_BINARY triggered. Our Response2: " + response.toHex())
 
             READ_CAPABILITY_CONTAINER_CHECK = false
             return response
@@ -301,6 +303,8 @@ class NFCtest: HostApduService() {
 
     override fun onDeactivated(reason : Int) {
         // Obsługa deaktywacji usługi
+
+        Log.d("nfc123","reason: $reason")
         Log.d("nfc123", "deact_processCommandApdu")
     }
 

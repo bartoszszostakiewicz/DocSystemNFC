@@ -65,7 +65,6 @@ fun SettingsScreen(navController: NavHostController, viewModel: MainViewModel, c
         navController.navigate(NFCSysScreen.Login.name)
     }
 
-//    val isEncryptionEnabled = viewModel.isEncryptionEnabled.collectAsState()
 
     val showDialog = remember { mutableStateOf(false) }
 
@@ -73,8 +72,8 @@ fun SettingsScreen(navController: NavHostController, viewModel: MainViewModel, c
     val cloudMirroring = viewModel.cloudMirroring.collectAsState().value
 
     if (showDialog.value) {
+
         var password by remember { mutableStateOf("") }
-        var isReauthenticationFailed by remember { mutableStateOf(false) }
 
         AlertDialog(
             onDismissRequest = { /*showDialog.value = false*/ },
@@ -193,14 +192,20 @@ fun SettingsScreen(navController: NavHostController, viewModel: MainViewModel, c
                         title = stringResource(id = R.string.auto_clear_cloud),
                         informationText = stringResource(id = R.string.additional_encryption_info),
                         action = {
-//                            viewModel.toggleEncryption()
+
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(288.dp))
+                    Setting(
+                        title = stringResource(id = R.string.integrity_check),
+                        informationText = stringResource(id = R.string.integrity_check_info),
+                        action = {
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
 
 
-                    // Delete Account Button
 
                     Button(
                         onClick = { showDialog.value = true },
@@ -219,15 +224,14 @@ fun SettingsScreen(navController: NavHostController, viewModel: MainViewModel, c
 
 @Composable
 fun Setting(
-    title: String = "Setting",
-    informationText: String = "This is a setting",
-    action : () -> Unit = {},
+    title: String = stringResource(id = R.string.setting_title),
+    informationText: String = stringResource(id = R.string.setting_info),
+    action: () -> Unit = {},
     check: Boolean = false
-){
+) {
 
     var checked by remember { mutableStateOf(check) }
     var expanded by remember { mutableStateOf(false) }
-    val sizeOfCornerRadius = 16.dp
 
     Row(
         modifier = Modifier
@@ -270,7 +274,7 @@ fun Setting(
             modifier = Modifier.padding(16.dp),
             checked = checked,
             onCheckedChange = {
-                              action()
+                action()
                 checked = it
             },
 

@@ -284,21 +284,8 @@ class CloudComm(
     fun uploadFile(selectedFile: File?, cipher: Boolean = false, onUrlAvailable: (String) -> Unit) {
 
 
-        if (selectedFile != null) {
-            selectedFile.isUploading = true
-        }
-
-
-        if (selectedFile != null) {
-            if(selectedFile.url.toString() != "https://www.google.com") {
-                onUrlAvailable(selectedFile.url.toString())
-                return
-            }
-        }
-
-
         if (auth.currentUser == null) {
-            Log.d("TAG123", "User not logged in")
+            Log.d("nfc123", "User not logged in")
             onUrlAvailable("Error: User not logged in")
             if (selectedFile != null) {
                 selectedFile.isUploading = false
@@ -357,18 +344,18 @@ class CloudComm(
                         selectedFile.url = URL(downloadUrl)
                         onUrlAvailable(downloadUrl)
                     }.addOnFailureListener { exception ->
-                        Log.d("TAG123", "onCreatexd: $exception")
+                        Log.d("nfc123", "onCreatexd: $exception")
                         onUrlAvailable("Error: $exception")
                     }
                 }.addOnFailureListener {
-                    Log.d("TAG123", "Upload failure: $it")
+                    Log.d("nfc123", "Upload failure: $it")
                     onUrlAvailable("Error: Upload failure: $it")
                 }
             } ?: run {
-                Log.d("TAG123", "Selected file is null")
+                Log.d("nfc123", "Selected file is null")
                 onUrlAvailable("Error: Selected file is null")
             }
-            Log.d("TAG123", "Selected file or byteArray is null")
+            Log.d("nfc123", "Selected file or byteArray is null")
             onUrlAvailable("Error: Selected file or byteArray is null")
         }
     }
@@ -392,6 +379,7 @@ class CloudComm(
             Log.d("nfc123", "File not deleted")
         }
     }
+
 
     fun getFilesList(context: Context, onResult: (List<File>) -> Unit, onError: (Exception) -> Unit) {
         if(auth.currentUser == null) {

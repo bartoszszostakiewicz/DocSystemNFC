@@ -119,9 +119,9 @@ fun SendScreen(
         // Wykonaj akcję powrotu do ekranu głównego
 //        navController.popBackStack()
         navController.navigate(NFCSysScreen.Home.name){
-            popUpTo(NFCSysScreen.Home.name){
-                inclusive = true
-            }
+//            popUpTo(NFCSysScreen.Home.name){
+//                inclusive = true
+//            }
         }
 
     }

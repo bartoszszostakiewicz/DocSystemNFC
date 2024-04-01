@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
@@ -40,6 +41,7 @@ fun setLocale(context: Context, localeCode: String) {
     config.setLocale(locale)
     resources.updateConfiguration(config, resources.displayMetrics)
 }
+
 
 class MainActivity : ComponentActivity() {
 

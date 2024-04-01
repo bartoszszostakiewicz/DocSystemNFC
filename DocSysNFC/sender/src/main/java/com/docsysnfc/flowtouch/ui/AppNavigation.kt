@@ -1,7 +1,9 @@
 package com.docsysnfc.flowtouch.ui
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,6 +13,7 @@ import androidx.navigation.navArgument
 import com.docsysnfc.flowtouch.MainViewModel
 import com.docsysnfc.flowtouch.model.NFCSysScreen
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun AppNavigation(viewModel: MainViewModel, context: Context) {
     val navController = rememberNavController()
@@ -37,16 +40,12 @@ fun AppNavigation(viewModel: MainViewModel, context: Context) {
         ) { backStackEntry ->
             val index = backStackEntry.arguments?.getInt("index")
             if (index != null) {
-                SendScreen(
-                    navController,
-                    viewModel,
-                    context,
-                    index
-                )
+                SendScreen(navController, viewModel, context, index)
             } else {
                 // Obsługa błędu, jeśli index jest null
             }
         }
+
 
         composable(NFCSysScreen.Receive.name) {
             ReceiveScreen(
@@ -80,13 +79,6 @@ fun AppNavigation(viewModel: MainViewModel, context: Context) {
             )
         }
 
-        composable(NFCSysScreen.TrustedDevices.name) {
-            TrustedDevicesScreen(
-                navController,
-                viewModel,
-                context
-            )
-        }
 
         composable(NFCSysScreen.Settings.name) {
             SettingsScreen(

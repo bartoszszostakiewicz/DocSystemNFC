@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.nfc.NfcAdapter
 import android.nfc.Tag
@@ -12,28 +13,30 @@ import android.os.Environment
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.docsysnfc.flowtouch.model.AuthenticationState
 import com.docsysnfc.R
+import com.docsysnfc.flowtouch.model.AuthenticationState
 import com.docsysnfc.flowtouch.model.CloudComm
 import com.docsysnfc.flowtouch.model.CreateAccountState
 import com.docsysnfc.flowtouch.model.File
 import com.docsysnfc.flowtouch.model.FileManager
+import com.docsysnfc.flowtouch.model.InternetConnectionStatus
 import com.docsysnfc.flowtouch.model.NFCComm
 import com.docsysnfc.flowtouch.model.NFCStatus
 import com.docsysnfc.flowtouch.model.NFCSysScreen
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import java.net.URL
 import com.docsysnfc.flowtouch.model.securityModule.SecurityManager
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.net.URL
 import java.util.Base64
 import javax.crypto.spec.SecretKeySpec
 
@@ -83,6 +86,9 @@ class MainViewModel(
     //its required for nfc status is available or not
     private val _nfcStatus = MutableStateFlow(NFCStatus.Unknown)
     val nfcStatus = _nfcStatus.asStateFlow()
+
+    private val _internetConnStatus = MutableStateFlow(InternetConnectionStatus.DISCONNECTED)
+    val internetConnStatus = _internetConnStatus.asStateFlow()
 
 
     //probalbly to delete
@@ -286,6 +292,85 @@ class MainViewModel(
 //        nfcComm.disableNFCReader(activity)
     }
 
+    suspend fun downloadFile(file:File){
+
+        Log.d("NFC123", "Rozpoczęcie pobierania pliku: ${file.downloadLink}")
+        _fileIsDownloading.value = true
+
+        cloudComm.downloadFile(
+            downloadDirectory = "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc/Received",
+            downloadLink = file.downloadLink,
+            context = context
+        ) { fileUri, mimeType ->
+            if (fileUri == null) {
+                Log.e("NFC123", "Nie udało się pobrać pliku, fileUri jest null.")
+                _fileIsDownloading.value = false
+                return@downloadFile
+            }
+
+
+            Log.d("NFC123", "Pobrany plik Uri: $fileUri, Typ MIME: $mimeType")
+
+            val fileName =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    FileManager.getNameFile(context, fileUri, extension = true).also {
+                        Log.d("NFC123", "Nazwa pliku (API >= Q): $it")
+                    }
+                } else {
+                    fileUri.lastPathSegment ?: "unknown"
+                }
+
+
+            val fileByteArray =
+                FileManager.fileToByteArray(context, fileUri, false) ?: ByteArray(0)
+
+            var fileSize = 0.0
+
+            var cnt = 0
+
+            Log.d("NFC123", "przed: $fileSize")
+
+            Log.d("NFC123", "FILE URI: $fileUri")
+
+            while (fileSize == 0.0 && cnt < 1000) {
+                cnt++
+                fileSize =
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        FileManager.getSizeOfFileFromContentUri(context, fileUri).also {
+                            //                    Thread.sleep(10)
+                            Log.d("NFC123", "Rozmiar pliku (API >= Q): $it MB")
+                        }
+                    } else {
+                        FileManager.getSizeFileFromFileUri(fileUri).also {
+                            Log.d("NFC123", "Rozmiar pliku (API < Q): $it MB")
+                        }
+                    }
+            }
+            Log.d("NFC123", "cnt: $cnt")
+
+            Log.d("NFC123", "pozyskany rozmiar pliku: $fileSize")
+
+            file.name = fileName
+            file.uri = fileUri
+            file.byteArray = fileByteArray
+            file.size = fileSize
+            file.type = mimeType.toString()
+            file.url = URL("https://www.google.com")
+
+
+
+
+            Log.d(
+                "NFC123",
+                "Tworzenie obiektu File: ${file.name}, Rozmiar: ${file.size} MB"
+            )
+
+            updateReceivedFiles(file)
+
+            Log.d("NFC123", "Aktualizacja otrzymanych plików: ${file.name}")
+        }
+
+    }
 
     suspend fun downloadFile(downloadLink: String, receivesFiles: Boolean = true) {
 
@@ -441,6 +526,7 @@ class MainViewModel(
     }
 
 
+
     private fun updateReceivedFiles(newFile: File) {
         _fileIsDownloading.value = false
 
@@ -469,13 +555,40 @@ class MainViewModel(
             }
 
             // Sprawdzenie, czy plik z takim samym URI lub linkiem do pobrania już istnieje
-            if (currentFiles.any { it.downloadLink == newFile.downloadLink }) {
+            if (currentFiles.any {
+                it.downloadLink == newFile.downloadLink }
+                ) {
+
 
                 Toast.makeText(
                     context,
                     "Plik ${newFile.name} jest już otrzymany.",
                     Toast.LENGTH_LONG
                 ).show()
+                //update this file
+                val updatedFiles = currentFiles.map { existingFile ->
+                    if (existingFile.downloadLink == newFile.downloadLink) {
+                        // Plik istnieje, więc zaktualizuj jego informacje
+                        Toast.makeText(
+                            context,
+                            "Informacje o pliku ${newFile.name} zostały zaktualizowane.",
+                            Toast.LENGTH_LONG
+                        ).show()
+
+                        // Zaktualizuj tylko potrzebne pola
+                        existingFile.apply {
+                            name = newFile.name
+                            size = newFile.size
+                            byteArray = newFile.byteArray
+                            uri = newFile.uri
+                            type = newFile.type
+                            // Możesz dodać więcej pól do aktualizacji
+                        }
+                    } else {
+                        // Plik nie wymaga aktualizacji
+                        existingFile
+                    }
+                }
                 currentFiles
             } else {
                 // Dodanie nowego pliku do listy
@@ -701,10 +814,11 @@ class MainViewModel(
 
     private val _uploadComplete = MutableStateFlow(false)
     val uploadComplete = _uploadComplete.asStateFlow()
+
     fun pushFileIntoCloud(file: File, cipher: Boolean) {
         viewModelScope.launch {
 
-            Log.d("TAG123", "Plik ${file.name}: ${file.byteArray.size} bajtów")
+            Log.d("nfc123", "Plik ${file.name}: ${file.byteArray.size} bajtów")
             cloudComm.uploadFile(file, cipher, onUrlAvailable = { url ->
                 if (cipher) {
                     _activeURL.value =
@@ -851,6 +965,30 @@ class MainViewModel(
 
     }
 
+    fun addReceivedFile(downloadedFile: File) {
+        viewModelScope.launch {
+            _receivesFiles.update { currentFiles ->
+                // Sprawdzanie czy lista zawiera już plik o takiej samej nazwie
+                if (currentFiles.any { it == downloadedFile }) {
+                    // Jeśli tak, zwracamy aktualną listę bez zmian
+                    currentFiles
+                } else {
+                    // Jeśli nie, dodajemy nowy plik do listy
+                    currentFiles + downloadedFile
+                }
+            }
+        }
+    }
+
+    fun checkInternetStatus(context: Context) {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork = connectivityManager.activeNetworkInfo
+        if(activeNetwork?.isConnectedOrConnecting == true) {
+            _internetConnStatus.value = InternetConnectionStatus.CONNECTED
+        } else {
+            _internetConnStatus.value = InternetConnectionStatus.DISCONNECTED
+        }
+    }
 
 }
 

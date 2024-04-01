@@ -75,5 +75,12 @@
     <string name="delete_confirm_desc">Are you sure to delete this file?</string>
     <string name="file_is_uploading">File is uploading</string>
     <string name="download">Download</string>
+    <string name="no_internet_connection">"Connection error! "</string>
+    <string name="no_internet_connection_text">The app requires an active internet connection to function properly. Please check your network settings or try again later.</string>
+    <string name="open">Open</string>
+    <string name="integrity_check">Checksum validation</string>
+    <string name="integrity_check_info">"Enabling this option will automatically calculate a checksum for your files to verify that their content has remained unchanged during transfer or storage. "</string>
+    <string name="setting_info">This is example of description of setting.\n</string>
+    <string name="setting_title">Test setting</string>
 </resources>
 

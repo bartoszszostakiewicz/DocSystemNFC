@@ -74,4 +74,10 @@
     <string name="invalid_credentials">Niepoprawne dane logowania!</string>
     <string name="delete_confirm_desc">Czy na pewno chcesz usunąc ten plik?</string>
     <string name="file_is_uploading">Plik jest przesyłany do chmury.</string>
+    <string name="download">Pobierz</string>
+    <string name="no_internet_connection">Brak połączenia z internetem!</string>
+    <string name="no_internet_connection_text">Aplikacja wymaga aktywnego połączenia sieciowego do prawidłowego działania. Proszę sprawdzić swoje ustawienia sieciowe lub spróbować ponownie później.</string>
+    <string name="open">Otwórz</string>
+    <string name="integrity_check">Suma kontrolna</string>
+    <string name="integrity_check_info">Ta opcja aktywuje automatyczne obliczanie sumy kontrolnej dla Twoich plików, co pozwala sprawdzić, czy ich zawartość pozostała niezmieniona podczas przesyłania.</string>
 </resources>

@@ -70,6 +70,7 @@ import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
 import com.docsysnfc.flowtouch.model.AuthenticationState
 import com.docsysnfc.flowtouch.model.File
+import com.docsysnfc.flowtouch.model.InternetConnectionStatus
 import com.docsysnfc.flowtouch.model.NFCStatus
 import com.docsysnfc.flowtouch.model.NFCSysScreen
 import com.docsysnfc.flowtouch.ui.theme.appBarColorTheme
@@ -93,7 +94,7 @@ fun setSenderMode(context: Context, isActive: Boolean) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreenTopBar(title: String, navController: NavController,viewModel: MainViewModel) {
+fun HomeScreenTopBar(title: String, navController: NavController, viewModel: MainViewModel) {
     TopAppBar(title = {
         Text(
             text = title,
@@ -116,7 +117,7 @@ fun HomeScreenTopBar(title: String, navController: NavController,viewModel: Main
 }
 
 @Composable
-fun TopBarClickableIcon(navController: NavController,viewModel: MainViewModel) {
+fun TopBarClickableIcon(navController: NavController, viewModel: MainViewModel) {
     Row {
         Icon(
             painterResource(id = R.drawable.key2),
@@ -157,7 +158,6 @@ fun SwipeableTiles(
     }
 }
 
-@OptIn(ExperimentalWearMaterialApi::class)
 @Composable
 fun SwipeableTile(
     file: File, viewModel: MainViewModel, navController: NavController
@@ -171,19 +171,22 @@ fun SwipeableTile(
     val showCipherDialog = remember { mutableStateOf(false) }
     val fileIsOnDevice = remember { mutableStateOf(false) }
     val downloadStart = remember { mutableStateOf(false) }
-    val isUploading = remember { mutableStateOf(file.isUploading) }
+//    val isUploading = remember { mutableStateOf(file.isUploading) }
 
     val cloudMirroring = viewModel.cloudMirroring.collectAsState()
 
     val additonalEncrytpion = viewModel.additionalEncryption.collectAsState()
 
-    if(cloudMirroring.value){
-        if(!fileIsOnDevice.value) {
+//    val isUploading = viewModel.uploadComplete.collectAsState()
+
+
+    if (cloudMirroring.value) {
+        if (!fileIsOnDevice.value) {
             viewModel.setDownloadStatus(true)
             downloadStart.value = true
         }
     }
-    if(additonalEncrytpion.value){
+    if (additonalEncrytpion.value) {
         isCipher.value = true
         viewModel.handleEncryption(file, isCipher.value)
     }
@@ -202,6 +205,7 @@ fun SwipeableTile(
 
     }
     LaunchedEffect(file) {
+        Log.d("nfc123","file: ${file.uri.toString()}")
         fileIsOnDevice.value = file.uri.toString() != file.downloadLink
         if (file.type == "binary") {
             isCipher.value = true
@@ -211,9 +215,10 @@ fun SwipeableTile(
     }
 
 
-    LaunchedEffect(isUploading) {
+    LaunchedEffect(uploadComplete) {
 
         if (uploadComplete) {
+
             navController.navigate(
                 "${NFCSysScreen.Send.name}/${
                     viewModel.modelSelectedFiles.value.indexOf(
@@ -222,12 +227,13 @@ fun SwipeableTile(
                 }"
             )
             viewModel.resetUploadComplete()
+
         }
     }
 
     if (showDeleteDialog.value) {
         AlertDialog(onDismissRequest = {
-           /*showDeleteDialog.value = false*/
+            /*showDeleteDialog.value = false*/
         }, title = {
             Text(text = stringResource(id = R.string.delete_confirm))
         }, text = {
@@ -395,7 +401,7 @@ fun SwipeableTile(
 
         Spacer(modifier = Modifier.height(8.dp)) // Add vertical spacing
 
-        if (isUploading.value) {
+        if (false) {
             CircularProgressIndicator(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
@@ -407,14 +413,14 @@ fun SwipeableTile(
                     .align(Alignment.CenterHorizontally),
                 fontWeight = FontWeight.Bold
             )
-        }else {
+        } else {
 
             Button(
                 onClick = {
 
-                    Log.d("TAG123", "linkztondhuehui: ${file.url}")
-                    Log.d("TAG123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value.size}")
-                    Log.d("TAG123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value[0].url}")
+                    Log.d("nfc123", "linkztondhuehui: ${file.url}")
+                    Log.d("nfc123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value.size}")
+                    Log.d("nfc123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value[0].url}")
 
                     viewModel.pushFileIntoCloud(file, isCipher.value)
 
@@ -479,11 +485,14 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
     LaunchedEffect(Unit) {
         viewModel.checkNFCStatus()
+        viewModel.checkInternetStatus(context = context)
     }
 
 
     // Observe NFC status
     val nfcStatus by viewModel.nfcStatus.collectAsState()
+
+    val internetConnectionStatus by viewModel.internetConnStatus.collectAsState()
 
 
     when (nfcStatus) {
@@ -509,7 +518,23 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
         }
     }
 
-    Scaffold(topBar = { HomeScreenTopBar(title = "flowtouch", navController = navController,viewModel) },
+    when(internetConnectionStatus){
+        InternetConnectionStatus.CONNECTED -> {
+
+            //todo
+        }
+        InternetConnectionStatus.DISCONNECTED -> {
+            PromptToNoInternetConnectionDialog()
+        }
+    }
+
+    Scaffold(topBar = {
+        HomeScreenTopBar(
+            title = "flowtouch",
+            navController = navController,
+            viewModel
+        )
+    },
         floatingActionButton = {
             Box(modifier = Modifier.fillMaxSize()) {}
         }) { innerPadding ->
@@ -549,8 +574,8 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
             Spacer(modifier = Modifier.weight(1f, true))
 
-            if(viewModel.modelSelectedFiles.collectAsState().value.isNotEmpty() ){
-                    Filters(viewModel)
+            if (viewModel.modelSelectedFiles.collectAsState().value.isNotEmpty()) {
+                Filters(viewModel)
             }
 
             SwipeableTiles(
@@ -656,6 +681,29 @@ fun PromptToEnableNFCDialog() {
     }
 }
 
+@Composable
+fun PromptToNoInternetConnectionDialog() {
+    var showDialog by remember { mutableStateOf(true) }
+
+    if (showDialog) {
+        AlertDialog(onDismissRequest = { /*showDialog = false*/ },
+            title = { Text(stringResource(R.string.no_internet_connection)) },
+            text = { Text(stringResource(R.string.no_internet_connection_text)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        buttonsColor, contentColor = Color.White
+                    )
+                ) {
+                    Text(stringResource(R.string.ok))
+                }
+            })
+    }
+
+}
 
 @Composable
 fun Filters(
