@@ -1,6 +1,5 @@
 package com.docsysnfc.flowtouch.model
 
-import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Log
@@ -17,8 +16,6 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.IvParameterSpec
 
 class SecurityManager {
-
-
 
     /**
      * Encrypts data with RSA
@@ -67,33 +64,33 @@ class SecurityManager {
         callback: (ByteArray) -> Unit
     ) {
         try {
-            Log.d("nfc123", "Starting decryption process")
+            Log.d(TAG, "Starting decryption process")
 
             // Ładowanie AndroidKeyStore
             val keyStore = KeyStore.getInstance("AndroidKeyStore").apply {
                 load(null)
             }
-            Log.d("nfc123", "KeyStore loaded")
+            Log.d(TAG, "KeyStore loaded")
 
             // Pobieranie klucza prywatnego za pomocą aliasu
             val privateKeyEntry = keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
                 ?: throw Exception("No such alias: $alias")
-            Log.d("nfc123", "PrivateKeyEntry obtained")
+            Log.d(TAG, "PrivateKeyEntry obtained")
 
             val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
             cipher.init(Cipher.DECRYPT_MODE, privateKeyEntry.privateKey)
-            Log.d("nfc123", "Cipher initialized for decryption")
+            Log.d(TAG, "Cipher initialized for decryption")
 
             // Odszyfrowanie każdego bloku danych
             encryptedDataBlocks.forEach { encryptedBlock ->
                 val decryptedBlock = cipher.doFinal(encryptedBlock)
-                Log.d("nfc123", "Block decrypted")
+                Log.d(TAG, "Block decrypted")
                 callback(decryptedBlock)
             }
-            Log.d("nfc123", "Decryption process completed")
+            Log.d(TAG, "Decryption process completed")
         } catch (e: Exception) {
             // Obsłuż wyjątek
-            Log.e("nfc123", "Error during decryption: ${e.message}")
+            Log.e(TAG, "Error during decryption: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -121,6 +118,27 @@ class SecurityManager {
         return Triple(encryptedData, secretKey, iv)
     }
 
+
+
+    /**
+     * Decrypts data with AES
+     * @param encryptedData the data to be decrypted
+     * @param secretKey the secret key to decrypt the data with
+     * @param iv the initialization vector
+     * @return the decrypted data
+     */
+
+    fun decryptDataAES(encryptedData: ByteArray, secretKey: SecretKey, iv: ByteArray): ByteArray {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val ivSpec = IvParameterSpec(iv)
+        Log.d(TAG, "ivSpec: ${ivSpec.iv}")
+        Log.d(TAG, "Len ivSpec iv: ${ivSpec.iv.size}")
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
+
+
+        return cipher.doFinal(encryptedData)
+    }
+
     fun splitDataIntoRSABlocks(data: ByteArray, keyLengthInBits: Int): Array<ByteArray> {
         val maxBlockSize =
             (keyLengthInBits / 8) - 11 // Maksymalny rozmiar bloku dla szyfrowania RSA.
@@ -141,25 +159,6 @@ class SecurityManager {
         return blocks.toTypedArray()
     }
 
-    /**
-     * Decrypts data with AES
-     * @param encryptedData the data to be decrypted
-     * @param secretKey the secret key to decrypt the data with
-     * @param iv the initialization vector
-     * @return the decrypted data
-     */
-
-    fun decryptDataAES(encryptedData: ByteArray, secretKey: SecretKey, iv: ByteArray): ByteArray {
-        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-        val ivSpec = IvParameterSpec(iv)
-        Log.d("nfc1234", "ivSpec: ${ivSpec.iv}")
-        Log.d("nfc1234", "Len ivSpec iv: ${ivSpec.iv.size}")
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
-
-
-        return cipher.doFinal(encryptedData)
-    }
-
     fun checkKey(alias: String) {
         val keyStore = KeyStore.getInstance("AndroidKeyStore")
 
@@ -167,7 +166,7 @@ class SecurityManager {
 
         // Sprawdzenie, czy klucz już istnieje.
         if (!keyStore.containsAlias(alias)) {
-            Log.d("nfc1234", "Klucz nie istnieje, generowanie klucza")
+            Log.d(TAG, "Klucz nie istnieje, generowanie klucza")
             // Klucz nie istnieje, więc generujemy nowy.
             val keyPairGenerator =
                 KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore")
@@ -181,12 +180,12 @@ class SecurityManager {
             try {
                 keyPairGenerator.initialize(parameterSpec)
                 keyPairGenerator.generateKeyPair()
-                Log.d("nfc1234", "Klucz został pomyślnie wygenerowany")
+                Log.d(TAG, "Klucz został pomyślnie wygenerowany")
             } catch (e: Exception) {
-                Log.e("nfc1234", "Błąd podczas generowania klucza: ${e.message}")
+                Log.e(TAG, "Błąd podczas generowania klucza: ${e.message}")
             }
         } else {
-//            Log.d("nfc1234", "Klucz istnieje")
+            Log.d(TAG, "Klucz istnieje")
         }
 
     }
@@ -198,25 +197,13 @@ class SecurityManager {
         return Base64.getEncoder().encodeToString(publicKey.encoded)
     }
 
-    fun getPrivateKey(context: Context, alias: String): String? {
-        val ks = KeyStore.getInstance("AndroidKeyStore").apply {
-            load(null)
-        }
-
-        val entry = ks.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
-        if (entry == null) {
-            Log.w("nfc123", "Not an instance of a PrivateKeyEntry")
-            return null
-        }
-//        Log.d("nfc123", "Private key: ${entry.privateKey.}")
-        return Base64.getEncoder().encodeToString(entry.privateKey.encoded)
-    }
 
 
-    fun validatePublicKey(pkey: String): Boolean {
+
+    fun validatePublicKey(publicKey: String): Boolean {
         return try {
             val keyFactory = KeyFactory.getInstance("RSA")
-            val keySpec = X509EncodedKeySpec(Base64.getDecoder().decode(pkey))
+            val keySpec = X509EncodedKeySpec(Base64.getDecoder().decode(publicKey))
             keyFactory.generatePublic(keySpec)
             true
         } catch (e: Exception) {

@@ -75,6 +75,7 @@ fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, contex
     val showDeleteDialog = remember { mutableStateOf(false) }
 
 
+
     ErrorAlert(
         title = stringResource(id = R.string.NFCRead),
         text = stringResource(R.string.NFCReadDescription),
@@ -138,6 +139,8 @@ fun FileCard(
     val isDownloaded = rememberSaveable { mutableStateOf(file.isDownloaded) }
     val startDownloading = rememberSaveable { mutableStateOf(false) }
 
+
+
     LaunchedEffect(file) {
         isCipher.value = file.isCipher
         isDownloaded.value = file.isDownloaded
@@ -171,7 +174,6 @@ fun FileCard(
             }
         )
     }
-
 
 
     Card(
@@ -325,8 +327,6 @@ fun ReceiveFileScreen(fileList: List<File>, mainViewModel: MainViewModel, contex
                     mainViewModel
                 )
             }
-
-
 
 
             LazyColumn(

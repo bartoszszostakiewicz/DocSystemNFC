@@ -109,6 +109,7 @@ fun SendScreen(
     var showEncryptionDialog by remember { mutableStateOf(false) }
 
     val file = remember { viewModel.modelSelectedFiles.value[index] }
+//    val publicKey = viewModel.publicKey.collectAsState()
 
     // Efekt uboczny do wyświetlania dialogu
     LaunchedEffect(additionalEncryption) {
@@ -191,14 +192,6 @@ fun SendScreen(
             }
         }
 
-//        viewModel.setNdefMessage()
-
-        /************TODO ADD VIBRATION during sending files***************/
-
-        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        val vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
-
-        /***************************/
 
         var isCipher by rememberSaveable { mutableStateOf(false) }
 
@@ -227,7 +220,6 @@ fun SendScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-//            .background(if (animate) backgroundColor else fileIsNotInCloudColor)\
                 .background(backgroundColor)
         ) {
             Column(
@@ -302,42 +294,43 @@ fun SendScreen(
     }
     else{
         viewModel.enableNFCReaderMode(context as Activity)
-        val nfcTag = viewModel.nfcTag.collectAsState()
 
-        LaunchedEffect(nfcTag.value) {
-            nfcTag.value?.let {tag ->
-                try {
+//        val nfcTag = viewModel.nfcTag.collectAsState()
 
-                    val ndef = Ndef.get(tag)
-                    ndef?.connect()
-                    val ndefMessage = ndef?.ndefMessage
-                    if (ndefMessage != null) {
-                        val payload = ndefMessage.records[0].payload
-                        val payloadStr = String(payload, Charset.forName("UTF-8"))
-
-                        Log.d("NFC123", "Payload: $payloadStr")
-
-                        //viewModel.downloadFile(payloadStr)
-                        val pkey = payloadStr.drop(3)
-
-                        if(viewModel.validatePublicKey(pkey)){
-                            file.publicKey = pkey
-                        }else{
-                            Toast.makeText(context, context.getString(R.string.invalid_pkey), Toast.LENGTH_SHORT).show()
-                        }
-
-                    }
-                    ndef?.close()
-
-
-
-                } catch (e: Exception) {
-                   // viewModel.setDownloadStatus(false)
-
-                    //Log.e("NFC123", "Błąd przy odczycie NFC: ${e.message}")
-                }
-            }
-        }
+//        LaunchedEffect(nfcTag.value) {
+//            nfcTag.value?.let {tag ->
+//                try {
+//
+//                    val ndef = Ndef.get(tag)
+//                    ndef?.connect()
+//                    val ndefMessage = ndef?.ndefMessage
+//                    if (ndefMessage != null) {
+//                        val payload = ndefMessage.records[0].payload
+//                        val payloadStr = String(payload, Charset.forName("UTF-8"))
+//
+//                        Log.d("NFC123", "Payload: $payloadStr")
+//
+//                        //viewModel.downloadFile(payloadStr)
+//                        val pkey = payloadStr.drop(3)
+//
+//                        if(viewModel.validatePublicKey(pkey)){
+//                            file.publicKey = pkey
+//                        }else{
+//                            Toast.makeText(context, context.getString(R.string.invalid_pkey), Toast.LENGTH_SHORT).show()
+//                        }
+//
+//                    }
+//                    ndef?.close()
+//
+//
+//
+//                } catch (e: Exception) {
+//                   // viewModel.setDownloadStatus(false)
+//
+//                    Log.e("NFC123", "Błąd przy odczycie NFC: ${e.message}")
+//                }
+//            }
+//        }
     }
 }
 

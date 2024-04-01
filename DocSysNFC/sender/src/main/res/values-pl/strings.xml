@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DocSysNFC</string>
-    <string name="login">login</string>
-    <string name="password">hasło</string>
+    <string name="login">Login</string>
+    <string name="password">Hasło</string>
     <string name="some_description">----</string>
     <string name="servicedesc">-----</string>
     <string name="send">Ekran wysyłania</string>

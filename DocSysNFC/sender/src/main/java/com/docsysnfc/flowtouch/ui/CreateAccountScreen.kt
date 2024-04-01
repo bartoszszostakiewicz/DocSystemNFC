@@ -1,6 +1,5 @@
 package com.docsysnfc.flowtouch.ui
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,28 +35,33 @@ import com.docsysnfc.flowtouch.ui.theme.buttonsColor
 import com.docsysnfc.flowtouch.ui.theme.whiteColor
 
 @Composable
-fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
+fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel) {
 
-    // Remember the state of the email and password input fields
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var repeatPassword by remember { mutableStateOf("") }
     var isFormValid by remember { mutableStateOf(false) }
     var isEmailValid by remember { mutableStateOf(false) }
 
-    // Determine if the form is valid
+
     LaunchedEffect(email, password, repeatPassword) {
+        isFormValid =
+            (password == repeatPassword && isEmailValid && password.length >= 6 && password.contains(
+                Regex(".*[0-9].*")
+            ))
 
-
-        isFormValid = (password == repeatPassword && isEmailValid && password.length >= 6 && password.contains(Regex(".*[0-9].*")))
-
-
-
+        if (viewModel.createAccountState.value == CreateAccountState.SUCCESS) {
+            navController.navigate(NFCSysScreen.Home.name)
+        }
     }
 
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .background(color = backgroundColor)) {
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(color = backgroundColor)
+    ) {
 
         Column(
             modifier = Modifier
@@ -66,7 +70,10 @@ fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, 
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = stringResource(id = R.string.create_account), style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = stringResource(id = R.string.create_account),
+                style = MaterialTheme.typography.titleLarge
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -102,15 +109,7 @@ fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, 
             Button(
                 onClick = {
                     if (isFormValid) {
-
-                    viewModel.createAccount(email, password)
-                        // Optionally navigate to a different screen after account creation
-                        // navController.navigate("next_screen_route")
-                        if (viewModel.createAccountState.value == CreateAccountState.SUCCESS) {
-                            navController.navigate(NFCSysScreen.Home.name)
-                        }
-
-                        //and add information about the account creation
+                        viewModel.createAccount(email, password)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -123,7 +122,6 @@ fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel, 
                 Text(stringResource(id = R.string.create_account))
             }
 
-            // Consider adding additional UI elements like terms and conditions, privacy policy, etc.
         }
     }
 }

@@ -110,36 +110,23 @@ class FileManager {
         }
 
 
-
-
-        //wyjebac to no extension to jest po to ze po pobraniu generuje jakiej randomowe exntesnion nie randomowe octet-stream pewnie i to wywala odkomentiowywanie
-        //xd i dlaczego wgl tam sa dwa wywoalania
         fun fileToByteArray(context: Context, uri: Uri, noExtension: Boolean = true): ByteArray? {
 
-
-
             if (uri == Uri.EMPTY) {
-                Log.e("fileToByteArray", "The Uri is empty.")
+                Log.e(TAG, "The Uri is empty.")
                 return null
             }
 
-
-
-
-            // Spróbuj otworzyć strumień wejściowy. Jeśli się nie uda, obsłuż wyjątek.
             val inputStream = try {
                 context.contentResolver.openInputStream(uri)
             } catch (e: FileNotFoundException) {
-                Log.e("fileToByteArray", "File not found for the provided Uri.", e)
+                Log.e(TAG, "File not found for the provided Uri.", e)
                 return null
             }
-
-
 
             inputStream?.let {
                 val byteArrayOutputStream = ByteArrayOutputStream()
 
-                //something wrong
                 if(noExtension) {
                     val extension = getNameFile(context, uri, true).substringAfterLast(".")
                     val typeBytes = extension.toByteArray(Charset.forName("UTF-8"))
@@ -153,6 +140,7 @@ class FileManager {
                 while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                     byteArrayOutputStream.write(buffer, 0, bytesRead)
                 }
+
                 return byteArrayOutputStream.toByteArray()
             }
             return null
@@ -202,7 +190,6 @@ class FileManager {
                 if (extension) {
                     name
                 } else {
-                    // Zwróć pełną nazwę, jeśli ma mniej niż 5 znaków
                     val nameWithoutExtension = name.substringBeforeLast(".")
                     if (nameWithoutExtension.length <= 5) {
                         nameWithoutExtension
@@ -223,12 +210,12 @@ class FileManager {
             return ("." + MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType))
         }
 
-        fun getMimeTypeFromExtension(extension: String): String? {
+        private fun getMimeTypeFromExtension(extension: String): String? {
             return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
         }
 
         fun getSizeFile(context: Context, uri: Uri): Double {
-            var fileSize: Double = 0.0
+            var fileSize = 0.0
 
             val cursor = context.contentResolver.query(
                 uri, null, null, null, null, null
@@ -236,11 +223,10 @@ class FileManager {
 
             try {
                 if (cursor != null && cursor.moveToFirst()) {
-                    // W kolumnie "_size" znajduje się rozmiar pliku w bajtach
                     val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
                     if (sizeIndex != -1) {
                         fileSize = cursor.getLong(sizeIndex)
-                            .toDouble() // Pobiera rozmiar w bajtach jako Long, konwertuje na Double
+                            .toDouble()
                     }
                 }
             } catch (e: Exception) {
@@ -253,7 +239,7 @@ class FileManager {
         }
 
         fun getSizeFileFromFileUri(uri: Uri): Double {
-            val file = uri.path?.let { java.io.File(it) } // Tworzy obiekt File z podanej ścieżki
+            val file = uri.path?.let { java.io.File(it) }
             if (file != null) {
                 return if (file.exists()) {
                     val fileSizeInBytes = file.length()
@@ -284,17 +270,17 @@ class FileManager {
                     val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE)
                     if (sizeIndex != -1) {
                         fileSizeInBytes = it.getLong(sizeIndex)
-                        Log.d("NFC123", "Rozmiar pliku w bajtach: $fileSizeInBytes")
+                        Log.d(TAG, "Rozmiar pliku w bajtach: $fileSizeInBytes")
                     } else {
-                        Log.e("NFC123", "Nie znaleziono kolumny SIZE dla URI: $uri")
+                        Log.e(TAG, "Nie znaleziono kolumny SIZE dla URI: $uri")
                     }
                 } else {
-                    Log.e("NFC123", "Cursor nie może przejść do pierwszego wiersza dla URI: $uri")
+                    Log.e(TAG, "Cursor nie może przejść do pierwszego wiersza dla URI: $uri")
                 }
             }
 
             val fileSizeInMB = fileSizeInBytes.toDouble() / (1024 * 1024)
-            Log.d("NFC123", "Rozmiar pliku w MB: $fileSizeInMB")
+            Log.d(TAG, "Rozmiar pliku w MB: $fileSizeInMB")
 
             return fileSizeInMB
         }
@@ -303,8 +289,7 @@ class FileManager {
             val byteArray = fileToByteArray(context, fileUri)
             val extensionLength = byteArray?.get(0)?.toInt()
             val extensionBytes = byteArray?.copyOfRange(1, 1 + extensionLength!!)
-            val extension = String(extensionBytes!!, Charset.forName("UTF-8"))
-            return extension
+            return String(extensionBytes!!, Charset.forName("UTF-8"))
         }
 
         fun createURLFile(uri: Uri?, name: String, size: Double, type: String): File {

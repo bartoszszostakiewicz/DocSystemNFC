@@ -10,11 +10,9 @@ import android.net.Uri
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.os.Environment
-import android.os.Vibrator
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -41,7 +39,7 @@ import java.net.URL
 import java.util.Base64
 import javax.crypto.spec.SecretKeySpec
 
-private const val TAG = "NFC123"
+private const val TAG = "NFC1234"
 
 class MainViewModel(
     app: Application,
@@ -57,6 +55,10 @@ class MainViewModel(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val nfcCommm = NFCComm()
 
+
+
+    private val _publicKey = MutableStateFlow("")
+    val publicKey = _publicKey.asStateFlow()
 
 
 
@@ -96,8 +98,8 @@ class MainViewModel(
 
 
     //probalbly to delete
-    private val _activeURL = MutableStateFlow("google.com")
-    val activeURL = _activeURL.asStateFlow()
+    private val currentNDEFMessage = MutableStateFlow("google.com")
+    val activeURL = currentNDEFMessage.asStateFlow()
 
 
     //probalby to delete
@@ -439,11 +441,11 @@ class MainViewModel(
                 ByteArray(0),
                 "",
                 "",
-                encryptionState = false
+                encryptionState = false,
 
             )
 
-            if (parts.size == 3) {
+            if (parts.size >= 3) {
                 downloadedFile.encryptedByteArray =
                     FileManager.fileToByteArray(context, fileUri, false)!!
                 downloadedFile.secretKey = parts[1]
@@ -807,10 +809,10 @@ class MainViewModel(
             Log.d(TAG, "Plik ${file.name}: ${file.byteArray.size} bajtów")
             cloudComm.uploadFile(file, cipher, onUrlAvailable = { url ->
                 if (cipher) {
-                    _activeURL.value =
-                        (file.downloadLink + R.string.separator + file.secretKey + R.string.separator + file.iV + R.string.separator)
+                    currentNDEFMessage.value =
+                        (url + R.string.separator + file.secretKey + R.string.separator + file.iV + R.string.separator)
                 } else {
-                    _activeURL.value = url
+                    currentNDEFMessage.value = url
                 }
                 _uploadComplete.value = true
                 file.isUploading = false
@@ -820,7 +822,7 @@ class MainViewModel(
     }
 
     fun setNdefMessage(ndefMessage: String) {
-        _activeURL.value = ndefMessage
+        currentNDEFMessage.value = R.string.separator.toString() + ndefMessage + R.string.separator.toString()
     }
 
 
@@ -944,8 +946,8 @@ class MainViewModel(
     }
 
     fun updateActiveURL(file: File) {
-        _activeURL.value =
-            file.downloadLink + R.string.separator + file.secretKey + R.string.separator + file.iV + R.string.separator
+        currentNDEFMessage.value =
+            file.url.toString() + R.string.separator + file.secretKey + R.string.separator + file.iV + R.string.separator
     }
 
     fun addReceivedFile(downloadedFile: File) {
@@ -979,8 +981,16 @@ class MainViewModel(
 
         if (response != null) {
             val payloadString = response.toString(Charsets.UTF_8)
+            Log.d(TAG, "Odczytane dane NFC: $payloadString")
+
             viewModelScope.launch {
-                downloadFile(payloadString, receivesFiles = true)
+                if(payloadString.contains("https")) {
+                    downloadFile(payloadString, receivesFiles = true)
+                }else{
+                    val parts = payloadString.split(R.string.separator.toString())
+                    _publicKey.value = parts[1]
+                    Log.d(TAG, "Public key: ${parts[1]}")
+                }
             }
         }
 

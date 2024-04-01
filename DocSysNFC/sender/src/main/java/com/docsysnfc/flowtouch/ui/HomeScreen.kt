@@ -470,26 +470,23 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
     val authenticationState by viewModel.authenticationState.collectAsState()
 
-    if (authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN) {
-        navController.navigate(NFCSysScreen.Login.name)
-    }
 
-    //key managmenent
-    //sprawdzam czy mam klucze jak nie to generuje
     viewModel.checkKey()
-//
 
     viewModel.disableNFCReaderMode(context as Activity)
 
 
+    LaunchedEffect(Unit, viewModel) {
 
-    LaunchedEffect(Unit) {
+        if (authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN) {
+            navController.navigate(NFCSysScreen.Login.name)
+        }
+
         viewModel.checkNFCStatus()
         viewModel.checkInternetStatus(context = context)
     }
 
 
-    // Observe NFC status
     val nfcStatus by viewModel.nfcStatus.collectAsState()
 
     val internetConnectionStatus by viewModel.internetConnStatus.collectAsState()
@@ -497,31 +494,30 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
     when (nfcStatus) {
         NFCStatus.Enabled -> {
-            Log.d("nfcstatus", "enabled")
+            Log.d(TAG, "enabled")
 
         }
 
         NFCStatus.Disabled -> {
 
-            Log.d("nfcstatus", "disabled")
+            Log.d(TAG, "disabled")
             PromptToEnableNFCDialog()
         }
 
         NFCStatus.NotSupported -> {
 
-            Log.d("nfcstatus", "notsupported")
+            Log.d(TAG, "notsupported")
             NFCNotSupportedDialog()
         }
 
         NFCStatus.Unknown -> {
-            Log.d("nfcstatus", "unknown")
+            Log.d(TAG, "unknown")
         }
     }
 
     when(internetConnectionStatus){
         InternetConnectionStatus.CONNECTED -> {
-
-            //todo
+            Log.d(TAG, "internet connected")
         }
         InternetConnectionStatus.DISCONNECTED -> {
             PromptToNoInternetConnectionDialog()

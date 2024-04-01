@@ -47,23 +47,11 @@ import com.docsysnfc.flowtouch.ui.theme.tilesColor
 @Composable
 fun ShareKeyScreen(navController: NavHostController, viewModel: MainViewModel, context: Context) {
 
-
     viewModel.disableNFCReaderMode(context as Activity)
-
-    /************TODO ADD VIBRATION during sending files***************/
-
-
-
-    /***************************/
-
-
-
 
     val animate by remember { mutableStateOf(/*viewModel.fileIsInCloud(file)*/ false) }
 
-
     setSenderMode(context, true)
-
 
     val iconSize = LocalConfiguration.current.screenWidthDp.dp * 0.40f
 
