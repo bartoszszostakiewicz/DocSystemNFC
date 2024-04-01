@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <integer name="tileHeight">200</integer>
-    <integer name="tileWidth">200</integer>
+    <integer name="tileHeight">250</integer>
+    <integer name="tileWidth">250</integer>
 </resources>

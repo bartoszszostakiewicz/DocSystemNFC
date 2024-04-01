@@ -4,10 +4,23 @@
 
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- Dodatkowo, jeśli chcesz tylko czytać z pamięci zewnętrznej -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.NFC_TRANSACTION_EVENT" />
+    <uses-permission android:name="android.permission.NFC_PREFERRED_PAYMENT_INFO" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.NFC" />
 
     <uses-feature android:name="android.hardware.nfc" android:required="true" />
 
@@ -15,15 +28,27 @@
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:requestLegacyExternalStorage="true"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.DocSysNFC"
+
         >
 
-        <service android:name=".sender.model.NFCtest" android:exported="true" android:permission="android.permission.BIND_NFC_SERVICE">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.docsysnfc.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <service android:name=".flowtouch.model.NFCComm" android:exported="true" android:permission="android.permission.BIND_NFC_SERVICE">
             <intent-filter>
                 <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE"/>
                 <category android:name="android.intent.category.APP_BROWSER"/>
@@ -34,14 +59,17 @@
         </service>
 
         <activity
-            android:name=".sender.MainActivity"
+            android:name=".flowtouch.MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
+
             android:theme="@style/Theme.DocSysNFC">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
+                <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
+<!--                <category android:name="android.intent.category.DEFAULT"/>-->
                 <category android:name="android.intent.category.LAUNCHER" />
+                <data android:mimeType="*/*"/>
             </intent-filter>
         </activity>
 
