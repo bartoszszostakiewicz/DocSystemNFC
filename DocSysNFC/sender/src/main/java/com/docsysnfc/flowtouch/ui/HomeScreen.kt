@@ -65,14 +65,14 @@ import androidx.navigation.NavController
 import androidx.wear.compose.material.Checkbox
 import androidx.wear.compose.material.CheckboxDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
-import androidx.wear.compose.material.ExperimentalWearMaterialApi
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
-import com.docsysnfc.flowtouch.model.AuthenticationState
+import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationState
 import com.docsysnfc.flowtouch.model.File
-import com.docsysnfc.flowtouch.model.InternetConnectionStatus
-import com.docsysnfc.flowtouch.model.NFCStatus
-import com.docsysnfc.flowtouch.model.NFCSysScreen
+import com.docsysnfc.flowtouch.model.flowtouchStates.InternetConnectionStatus
+import com.docsysnfc.flowtouch.model.flowtouchStates.NFCStatus
+import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
+import com.docsysnfc.flowtouch.model.TAG
 import com.docsysnfc.flowtouch.ui.theme.appBarColorTheme
 import com.docsysnfc.flowtouch.ui.theme.backgroundColor
 import com.docsysnfc.flowtouch.ui.theme.buttonsColor
@@ -418,7 +418,7 @@ fun SwipeableTile(
             Button(
                 onClick = {
 
-                    Log.d("nfc123", "linkztondhuehui: ${file.url}")
+                    Log.d(TAG, "linkztondhuehui: ${file.url}")
                     Log.d("nfc123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value.size}")
                     Log.d("nfc123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value[0].url}")
 
@@ -530,7 +530,7 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
     Scaffold(topBar = {
         HomeScreenTopBar(
-            title = "flowtouch",
+            title = stringResource(id = R.string.app_name_new),
             navController = navController,
             viewModel
         )
@@ -552,7 +552,7 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 2.dp, vertical = 1.dp), // Adjust padding as needed
+                    .padding(horizontal = 2.dp, vertical = 1.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 IconButton(

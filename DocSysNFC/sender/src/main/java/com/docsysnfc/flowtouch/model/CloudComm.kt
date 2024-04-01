@@ -25,19 +25,10 @@ val TAG = "NFC123"
 class CloudComm(
     private val firebaseStorage: FirebaseStorage = FirebaseStorage.getInstance()
 ) {
-    private val auth = FirebaseAuth.getInstance()
-    private fun createFileInInternalStorage(
-        context: Context,
-        folderName: String = "NFC_DocSys",
-        fileName: String
-    ): java.io.File {
-        val folder = java.io.File(context.filesDir, folderName)
-        if (!folder.exists()) {
-            folder.mkdir()
-        }
 
-        return java.io.File(folder, fileName)
-    }
+
+    private val auth = FirebaseAuth.getInstance()
+
 
     suspend fun downloadFile(
         downloadDirectory: String = "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc",
@@ -51,51 +42,48 @@ class CloudComm(
 
         // Sprawdzenie istnienia pliku
         if (destinationFile.exists()) {
-            Log.d("nfc123", "Plik już istnieje: ${destinationFile.absolutePath}")
-            callback(Uri.fromFile(destinationFile), "Plik już istnieje: ${destinationFile.absolutePath}")
+            Log.d(TAG, "Plik już istnieje: ${destinationFile.absolutePath}")
+            callback(
+                Uri.fromFile(destinationFile),
+                "Plik już istnieje: ${destinationFile.absolutePath}"
+            )
             return
         }
 
+        //prepare downloadlink
+        val httpsIndex = downloadLink.indexOf("https")
+
+        val link = downloadLink.substring(httpsIndex)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // Kod dla Android 10 (API 29) lub nowszego
-            downloadFileForQAndAbove(downloadDirectory,downloadLink, context, callback)
+            downloadFileForQAndAbove(downloadDirectory, link, context, callback)
         } else {
             // Kod dla starszych wersji Androida
-            downloadFileForPreQ(downloadDirectory,downloadLink, context, callback)
+            downloadFileForPreQ(downloadDirectory, link, context, callback)
         }
     }
 
 
-
     private fun downloadFileForPreQ(
         directory: String,
-        downloadLink: String,
+        link: String,
         context: Context,
         callback: (Uri?, String) -> Unit
     ) {
-        // Logowanie URL
 
-
-        val link : String
-        if(downloadLink.startsWith("https")){
-            link = downloadLink
-        }else {
-            link = downloadLink.drop(3)
-        }
-
-        Log.d("NFC123", "URL: $link")
-        Log.d("NFC123", "URL len: ${link.length}")
         // Uzyskanie referencji do pliku w Firebase Storage
         val storageRef = firebaseStorage.getReferenceFromUrl(link)
-        Log.d("NFC123", "storageRef: $storageRef")
+        Log.d(TAG, "storageRef: $storageRef")
 
 
         // Obsługa metadanych
         storageRef.metadata.addOnSuccessListener { metadata ->
-            Log.d("NFC123", "metadata: $metadata")
+            Log.d(TAG, "metadata: $metadata")
 
             // Tworzenie pliku w katalogu "Downloads"
-            val folderName = Environment.DIRECTORY_DOWNLOADS // Użycie publicznego katalogu "Downloads"
+            val folderName =
+                Environment.DIRECTORY_DOWNLOADS // Użycie publicznego katalogu "Downloads"
             val fileName = metadata.name ?: "unknown"
             val mimeType = metadata.contentType ?: "application/octet-stream"
 
@@ -108,7 +96,8 @@ class CloudComm(
             ) {
 
                 // Tworzenie pliku lokalnego
-                val downloadsFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val downloadsFolder =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 val docSysNfcFolder = java.io.File(downloadsFolder, "DocSysNFC")
 
                 // Sprawdzenie czy katalog istnieje, jeśli nie - próba utworzenia
@@ -136,52 +125,43 @@ class CloudComm(
 
                 // Pobieranie pliku
                 storageRef.getFile(localFile).addOnSuccessListener {
-                    Log.d("NFC123", "Plik został pomyślnie pobrany: ${localFile.absolutePath}")
+                    Log.d(TAG, "Plik został pomyślnie pobrany: ${localFile.absolutePath}")
                     // Przekazanie Uri do pobranego pliku
                     callback(Uri.fromFile(localFile), mimeType)
                 }.addOnFailureListener { exception ->
-                    Log.e("NFC123", "Błąd pobierania pliku: $exception")
+                    Log.e(TAG, "Błąd pobierania pliku: $exception")
                     callback(null, "")
                 }
             } else {
                 // Obsługa przypadku, gdy nie ma uprawnień
-                Log.e("NFC123", "Brak uprawnień do zapisu w katalogu Downloads")
+                Log.e(TAG, "Brak uprawnień do zapisu w katalogu Downloads")
                 callback(null, "")
             }
 
         }.addOnFailureListener {
-            Log.e("NFC123", "Błąd pobierania metadanych: $it")
+            Log.e(TAG, "Błąd pobierania metadanych: $it")
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun downloadFileForQAndAbove(
         directory: String,
-        downloadLink: String,
+        link: String,
         context: Context,
         callback: (Uri?, String) -> Unit
     ) {
 
-        val link : String
-        if(downloadLink.startsWith("https")){
-            link = downloadLink
-        }else if (downloadLink.startsWith("enhttps")) {
-            link = downloadLink.drop(1)
-        } else {
-            link = downloadLink.drop(3)
-        }
 
         // Logowanie URL
-        Log.d("NFC123", "URL: $link")
-        Log.d("NFC123", "URL len: ${link.length}")
+
 
         // Uzyskanie referencji do pliku w Firebase Storage
         val storageRef = firebaseStorage.getReferenceFromUrl(link)
-        Log.d("NFC123", "storageRef: $storageRef")
+        Log.d(TAG, "storageRef: $storageRef")
 
         // Obsługa metadanych
         storageRef.metadata.addOnSuccessListener { metadata ->
-            Log.d("NFC123", "metadata: $metadata")
+            Log.d(TAG, "metadata: $metadata")
 
             val fileName = metadata.name ?: "unknown"
             val mimeType = metadata.contentType ?: "application/octet-stream"
@@ -229,32 +209,32 @@ class CloudComm(
                             try {
                                 stream.stream.copyTo(outputStream)
                                 outputStream.close() // Zamknięcie strumienia po zakończeniu zapisu
-                                Log.d("NFC123", "Plik został pomyślnie pobrany: ${uri}")
+                                Log.d(TAG, "Plik został pomyślnie pobrany: ${uri}")
                                 // Przekazanie Uri do pobranego pliku
                                 callback(uri, mimeType)
                             } catch (e: IOException) {
-                                Log.e("NFC123", "Błąd przy zapisie danych do strumienia: $e")
+                                Log.e(TAG, "Błąd przy zapisie danych do strumienia: $e")
                                 callback(null, "")
                             }
                         }.addOnFailureListener { exception ->
-                            Log.e("NFC123", "Błąd pobierania pliku: $exception")
+                            Log.e(TAG, "Błąd pobierania pliku: $exception")
                             callback(null, "")
                         }
                     } else {
-                        Log.e("NFC123", "Nie można otworzyć OutputStream")
+                        Log.e(TAG, "Nie można otworzyć OutputStream")
                         callback(null, "")
                     }
                 } ?: run {
-                    Log.e("NFC123", "Nie można utworzyć pliku w MediaStore")
+                    Log.e(TAG, "Nie można utworzyć pliku w MediaStore")
                     callback(null, "")
                 }
 
             } catch (e: Exception) {
-                Log.e("NFC123", "Błąd przy tworzeniu pliku w MediaStore: $e")
+                Log.e(TAG, "Błąd przy tworzeniu pliku w MediaStore: $e")
                 callback(null, "")
             }
         }.addOnFailureListener {
-            Log.e("NFC123", "Błąd pobierania metadanych: $it")
+            Log.e(TAG, "Błąd pobierania metadanych: $it")
         }
     }
 
@@ -280,12 +260,14 @@ class CloudComm(
     }
 
 
-
-    fun uploadFile(selectedFile: File?, cipher: Boolean = false, onUrlAvailable: (String) -> Unit) {
-
+    fun uploadFile(
+        selectedFile: File?,
+        cipher: Boolean = false,
+        onUrlAvailable: (String) -> Unit
+    ) {
 
         if (auth.currentUser == null) {
-            Log.d("nfc123", "User not logged in")
+            Log.d(TAG, "User not logged in")
             onUrlAvailable("Error: User not logged in")
             if (selectedFile != null) {
                 selectedFile.isUploading = false
@@ -336,37 +318,35 @@ class CloudComm(
                 }
             }
         } ?: run {
-            selectedFile?.let {file ->
+            selectedFile?.let { file ->
                 fileRef.putFile(file.uri).addOnSuccessListener {
-                    // Po udanym przesłaniu pliku, pobierz jego URL
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         val downloadUrl = uri.toString()
                         selectedFile.url = URL(downloadUrl)
                         onUrlAvailable(downloadUrl)
                     }.addOnFailureListener { exception ->
-                        Log.d("nfc123", "onCreatexd: $exception")
+                        Log.d(TAG, "Upload failure: $exception")
                         onUrlAvailable("Error: $exception")
                     }
                 }.addOnFailureListener {
-                    Log.d("nfc123", "Upload failure: $it")
+                    Log.d(TAG, "Upload failure: $it")
                     onUrlAvailable("Error: Upload failure: $it")
                 }
             } ?: run {
-                Log.d("nfc123", "Selected file is null")
+                Log.d(TAG, "Selected file is null")
                 onUrlAvailable("Error: Selected file is null")
             }
-            Log.d("nfc123", "Selected file or byteArray is null")
+            Log.d(TAG, "Selected file or byteArray is null")
             onUrlAvailable("Error: Selected file or byteArray is null")
         }
     }
-
 
 
     fun deleteFile(file: File) {
 
 
         if (auth.currentUser == null) {
-            Log.d("nfc123", "onCreate: ${auth.currentUser}")
+            Log.d(TAG, "onCreate: ${auth.currentUser}")
             return
         }
 
@@ -374,16 +354,16 @@ class CloudComm(
             firebaseStorage.reference.child("files/${auth.currentUser!!.uid}/${file.name}")
 
         fileRef.delete().addOnSuccessListener {
-            Log.d("nfc123", "File deleted")
+            Log.d(TAG, "File deleted")
         }.addOnFailureListener {
-            Log.d("nfc123", "File not deleted")
+            Log.d(TAG, "File not deleted")
         }
     }
 
 
-    fun getFilesList(context: Context, onResult: (List<File>) -> Unit, onError: (Exception) -> Unit) {
-        if(auth.currentUser == null) {
-            Log.d("nfc123", "onCreate: ${auth.currentUser}")
+    fun getFilesList(onResult: (List<File>) -> Unit, onError: (Exception) -> Unit) {
+        if (auth.currentUser == null) {
+            Log.d(TAG, "onCreate: ${auth.currentUser}")
             return
         }
         val fileRef = firebaseStorage.reference.child("files/${auth.currentUser!!.uid}")
@@ -427,8 +407,6 @@ class CloudComm(
                 onError(exception)
             }
     }
-
-
 
 
 }

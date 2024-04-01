@@ -43,8 +43,8 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
-import com.docsysnfc.flowtouch.model.AuthenticationState
-import com.docsysnfc.flowtouch.model.NFCSysScreen
+import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationState
+import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
 import com.docsysnfc.flowtouch.ui.theme.backgroundColor
 import com.docsysnfc.flowtouch.ui.theme.buttonsColor
 import com.docsysnfc.flowtouch.ui.theme.deleteButtonsColor

@@ -82,5 +82,6 @@
     <string name="integrity_check_info">"Enabling this option will automatically calculate a checksum for your files to verify that their content has remained unchanged during transfer or storage. "</string>
     <string name="setting_info">This is example of description of setting.\n</string>
     <string name="setting_title">Test setting</string>
+    <string name="app_name_new">flowtouch</string>
 </resources>
 

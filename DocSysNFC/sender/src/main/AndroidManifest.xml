@@ -48,7 +48,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <service android:name=".flowtouch.model.NFCtest" android:exported="true" android:permission="android.permission.BIND_NFC_SERVICE">
+        <service android:name=".flowtouch.model.NFCComm" android:exported="true" android:permission="android.permission.BIND_NFC_SERVICE">
             <intent-filter>
                 <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE"/>
                 <category android:name="android.intent.category.APP_BROWSER"/>

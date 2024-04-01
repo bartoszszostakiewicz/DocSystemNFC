@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
@@ -21,8 +20,8 @@ import androidx.core.content.edit
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.docsysnfc.flowtouch.model.NFCSysScreen
-import com.docsysnfc.flowtouch.model.NFCtest
+import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
+import com.docsysnfc.flowtouch.model.NFCComm
 import com.docsysnfc.flowtouch.ui.AppNavigation
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -96,7 +95,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startNFCService(ndefMessage: String) {
-        val intent = Intent(this, NFCtest::class.java).apply {
+        val intent = Intent(this, NFCComm::class.java).apply {
             putExtra("ndefMessage", ndefMessage)
         }
         startService(intent)
@@ -137,7 +136,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun stopNFCService() {
-        val intent = Intent(this, NFCtest::class.java)
+        val intent = Intent(this, NFCComm::class.java)
         stopService(intent)
     }
 

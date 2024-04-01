@@ -2,7 +2,6 @@ package com.docsysnfc.flowtouch.ui
 
 import android.content.Context
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
@@ -11,7 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.docsysnfc.flowtouch.MainViewModel
-import com.docsysnfc.flowtouch.model.NFCSysScreen
+import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable

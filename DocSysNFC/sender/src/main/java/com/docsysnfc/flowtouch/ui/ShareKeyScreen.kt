@@ -47,18 +47,12 @@ import com.docsysnfc.flowtouch.ui.theme.tilesColor
 @Composable
 fun ShareKeyScreen(navController: NavHostController, viewModel: MainViewModel, context: Context) {
 
-    //    val authenticationState by viewModel.authenticationState.collectAsState()
-//
-//    if(authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN){
-//        navController.navigate(NFCSysScreen.Login.name)
-//    }
 
     viewModel.disableNFCReaderMode(context as Activity)
 
     /************TODO ADD VIBRATION during sending files***************/
 
-    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    val vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
+
 
     /***************************/
 

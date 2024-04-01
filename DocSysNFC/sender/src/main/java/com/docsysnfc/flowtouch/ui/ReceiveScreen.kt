@@ -56,21 +56,7 @@ import com.docsysnfc.flowtouch.ui.theme.tilesColor
 import com.docsysnfc.flowtouch.ui.theme.whiteColor
 import java.nio.charset.Charset
 
-val APDU_SELECT = byteArrayOf(
-    0x00.toByte(), // CLA	- Class - Class of instruction
-    0xA4.toByte(), // INS	- Instruction - Instruction code
-    0x04.toByte(), // P1	- Parameter 1 - Instruction parameter 1
-    0x00.toByte(), // P2	- Parameter 2 - Instruction parameter 2
-    0x07.toByte(), // Lc field	- Number of bytes present in the data field of the command
-    0xD2.toByte(),
-    0x76.toByte(),
-    0x00.toByte(),
-    0x00.toByte(),
-    0x85.toByte(),
-    0x01.toByte(),
-    0x01.toByte(), // NDEF Tag Application name
-    0x00.toByte(), // Le field	- Maximum number of bytes expected in the data field of the response to the command
-)
+
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
@@ -101,59 +87,8 @@ fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, contex
         showDialog = showDialog,
         onDismiss = { showDialog.value = false })
 
-    val nfcTag = viewModel.nfcTag.collectAsState()
-
-    LaunchedEffect(nfcTag.value) {
-        nfcTag.value?.let {tag ->
-            try {
-                val isoDep = IsoDep.get(tag)
-                isoDep?.connect()
-
-                val selectNDEFfile = byteArrayOf(
-                    0x00.toByte(),
-                    0xA4.toByte(),
-                    0x00.toByte(),
-                    0x0C.toByte(),
-                    0x02.toByte(),
-                    0xE1.toByte(),
-                    0x04.toByte()
-                )
-
-                val response = isoDep?.transceive(APDU_SELECT)
-                Log.d("NFC123", "Response: ${response?.contentToString()}")
-
-                isoDep?.close()
-//
-//                val ndef = Ndef.get(tag)
-//                ndef?.connect()
-//                val ndefMessage = ndef?.ndefMessage
-//                if (ndefMessage != null) {
-//                    val payload = ndefMessage.records[0].payload
-//                    val payloadStr = String(payload, Charset.forName("UTF-8"))
-//
-//                    Log.d("NFC123", "Payload: $payloadStr")
-//                    viewModel.downloadFile(payloadStr)
-//
-//                }
-//                ndef?.close()
-
-//                if(ndef == null){
-//                    val isoDep = IsoDep.get(tag)
-//
-//                    isoDep?.connect()
-//
-//                    val response = isoDep?.maxTransceiveLength
-//                    Log.d("NFC123", "Response: ${response?.contentToString()}")
-//                }
 
 
-            } catch (e: Exception) {
-                viewModel.setDownloadStatus(false)
-                showDialog.value = true
-                Log.e("NFC123", "Błąd przy odczycie NFC: ${e.message}")
-            }
-        }
-    }
 
     val fileList = viewModel.receiveFiles.collectAsState()
 

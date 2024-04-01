@@ -1,4 +1,4 @@
-package com.docsysnfc.flowtouch.model.securityModule
+package com.docsysnfc.flowtouch.model
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
@@ -16,24 +16,8 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.IvParameterSpec
 
-class SecurityManager(
+class SecurityManager {
 
-) {
-
-    /**
-     * Generates a pair of keys
-     * @return a pair of keys
-     */
-    fun generateKeys(): Pair<String, String> {
-        val keyPairGenerator = KeyPairGenerator.getInstance(RSAEncryption.RSA_ALGORITHM)
-        keyPairGenerator.initialize(2048)
-        val keyPair = keyPairGenerator.generateKeyPair()
-
-        val publicKey = Base64.getEncoder().encodeToString(keyPair.public.encoded)
-        val privateKey = Base64.getEncoder().encodeToString(keyPair.private.encoded)
-
-        return Pair(publicKey, privateKey)
-    }
 
 
     /**
@@ -77,7 +61,11 @@ class SecurityManager(
      * @param alias the alias for the private key in the AndroidKeyStore
      * @param callback function to process decrypted data
      */
-    fun decryptDataRSA(encryptedDataBlocks: Array<ByteArray>, alias: String, callback: (ByteArray) -> Unit) {
+    fun decryptDataRSA(
+        encryptedDataBlocks: Array<ByteArray>,
+        alias: String,
+        callback: (ByteArray) -> Unit
+    ) {
         try {
             Log.d("nfc123", "Starting decryption process")
 
@@ -132,8 +120,10 @@ class SecurityManager(
 
         return Triple(encryptedData, secretKey, iv)
     }
+
     fun splitDataIntoRSABlocks(data: ByteArray, keyLengthInBits: Int): Array<ByteArray> {
-        val maxBlockSize = (keyLengthInBits / 8) - 11 // Maksymalny rozmiar bloku dla szyfrowania RSA.
+        val maxBlockSize =
+            (keyLengthInBits / 8) - 11 // Maksymalny rozmiar bloku dla szyfrowania RSA.
 
         // Lista na przechowywanie bloków
         val blocks = mutableListOf<ByteArray>()
