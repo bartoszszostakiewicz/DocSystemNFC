@@ -256,7 +256,7 @@ fun SendScreen(
                         ) {
                             Icon(
                                 painter = painterResource(id = getIconFile(file)),
-                                contentDescription = "Icon",
+                                contentDescription = stringResource(id = R.string.file_icon),
                                 modifier = Modifier
                                     .size(iconSize)
                                     .align(Alignment.CenterVertically)
@@ -294,43 +294,6 @@ fun SendScreen(
     }
     else{
         viewModel.enableNFCReaderMode(context as Activity)
-
-//        val nfcTag = viewModel.nfcTag.collectAsState()
-
-//        LaunchedEffect(nfcTag.value) {
-//            nfcTag.value?.let {tag ->
-//                try {
-//
-//                    val ndef = Ndef.get(tag)
-//                    ndef?.connect()
-//                    val ndefMessage = ndef?.ndefMessage
-//                    if (ndefMessage != null) {
-//                        val payload = ndefMessage.records[0].payload
-//                        val payloadStr = String(payload, Charset.forName("UTF-8"))
-//
-//                        Log.d("NFC123", "Payload: $payloadStr")
-//
-//                        //viewModel.downloadFile(payloadStr)
-//                        val pkey = payloadStr.drop(3)
-//
-//                        if(viewModel.validatePublicKey(pkey)){
-//                            file.publicKey = pkey
-//                        }else{
-//                            Toast.makeText(context, context.getString(R.string.invalid_pkey), Toast.LENGTH_SHORT).show()
-//                        }
-//
-//                    }
-//                    ndef?.close()
-//
-//
-//
-//                } catch (e: Exception) {
-//                   // viewModel.setDownloadStatus(false)
-//
-//                    Log.e("NFC123", "Błąd przy odczycie NFC: ${e.message}")
-//                }
-//            }
-//        }
     }
 }
 

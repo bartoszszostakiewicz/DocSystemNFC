@@ -56,10 +56,8 @@ class MainViewModel(
     private val nfcCommm = NFCComm()
 
 
-
     private val _publicKey = MutableStateFlow("")
     val publicKey = _publicKey.asStateFlow()
-
 
 
     private val _fileIsCipher = MutableStateFlow(false)
@@ -266,7 +264,6 @@ class MainViewModel(
     }
 
 
-
     private val _navigationDestination = MutableStateFlow(NFCSysScreen.Home)
     val navigationDestination = _navigationDestination
 
@@ -274,8 +271,6 @@ class MainViewModel(
         Log.d(TAG, "setNavigationDestination: $destination")
         _navigationDestination.value = destination
     }
-
-
 
 
     fun enableNFCReaderMode(activity: Activity) {
@@ -443,7 +438,7 @@ class MainViewModel(
                 "",
                 encryptionState = false,
 
-            )
+                )
 
             if (parts.size >= 3) {
                 downloadedFile.encryptedByteArray =
@@ -639,7 +634,7 @@ class MainViewModel(
         _fileIsDownloading.value = b
     }
 
-    //zakladamy ze bytearray jest wypelnione
+
     fun handleEncryption(file: File, encryption: Boolean, reading: Boolean = false) {
         viewModelScope.launch {
 
@@ -651,6 +646,11 @@ class MainViewModel(
                 file.encryptionState = true
 
                 val encryptedPack = securityManager.encryptDataAES(file.byteArray)
+
+                if(publicKey.value.isNotEmpty()){
+                    Log.d(TAG,"public key: ${publicKey.value}")
+                }
+
                 file.encryptedByteArray = encryptedPack.first
                 file.secretKey = Base64.getEncoder().encodeToString(encryptedPack.second.encoded)
                 file.iV = Base64.getEncoder().encodeToString(encryptedPack.third)
@@ -661,6 +661,16 @@ class MainViewModel(
                 Log.d(TAG, "Data LEN  = ${file.encryptedByteArray.size}")
                 Log.d(TAG, "IV = ${file.iV.toString()}")
                 Log.d(TAG, "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
+
+
+                //reset public key
+                _publicKey.value = ""
+
+                if(publicKey.value.isNotEmpty()){
+                    Log.d(TAG,"public key: ${publicKey.value}")
+                }else{
+                    Log.d(TAG,"public key is empty")
+                }
 
                 file.encryptionState = false
                 val endTime = System.currentTimeMillis()
@@ -822,7 +832,8 @@ class MainViewModel(
     }
 
     fun setNdefMessage(ndefMessage: String) {
-        currentNDEFMessage.value = R.string.separator.toString() + ndefMessage + R.string.separator.toString()
+        currentNDEFMessage.value =
+            R.string.separator.toString() + ndefMessage + R.string.separator.toString()
     }
 
 
@@ -977,24 +988,26 @@ class MainViewModel(
     }
 
 
-   fun processNFCData(response: ByteArray?) {
+    fun processNFCData(response: ByteArray?) {
 
         if (response != null) {
             val payloadString = response.toString(Charsets.UTF_8)
             Log.d(TAG, "Odczytane dane NFC: $payloadString")
 
             viewModelScope.launch {
-                if(payloadString.contains("https")) {
+                if (payloadString.contains("https")) {
                     downloadFile(payloadString, receivesFiles = true)
-                }else{
-                    val parts = payloadString.split(R.string.separator.toString())
-                    _publicKey.value = parts[1]
-                    Log.d(TAG, "Public key: ${parts[1]}")
+                } else {
+                    try {
+                        val parts = payloadString.split(R.string.separator.toString())
+                        _publicKey.value = parts[1]
+                        Log.d(TAG, "Public key: ${parts[1]}")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Błąd podczas przetwarzania danych NFC: $e")
+                    }
                 }
             }
         }
-
-
 
     }
 
