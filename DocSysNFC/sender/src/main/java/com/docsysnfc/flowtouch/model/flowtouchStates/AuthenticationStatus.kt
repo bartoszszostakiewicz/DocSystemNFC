@@ -1,6 +1,6 @@
 package com.docsysnfc.flowtouch.model.flowtouchStates
 
-enum class CreateAccountState {
+enum class AuthenticationStatus {
     SUCCESS,
     FAILURE,
     UNKNOWN

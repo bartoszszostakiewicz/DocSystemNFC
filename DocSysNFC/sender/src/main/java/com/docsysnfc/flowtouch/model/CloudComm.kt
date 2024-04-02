@@ -30,7 +30,7 @@ class CloudComm(
     private val auth = FirebaseAuth.getInstance()
 
 
-    suspend fun downloadFile(
+    fun downloadFile(
         downloadDirectory: String = "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc",
         downloadLink: String,
         context: Context,
@@ -50,17 +50,19 @@ class CloudComm(
             return
         }
 
-        //prepare downloadlink
         val httpsIndex = downloadLink.indexOf("https")
 
-        val link = downloadLink.substring(httpsIndex)
+        try {
+            val link = downloadLink.substring(httpsIndex)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Kod dla Android 10 (API 29) lub nowszego
-            downloadFileForQAndAbove(downloadDirectory, link, context, callback)
-        } else {
-            // Kod dla starszych wersji Androida
-            downloadFileForPreQ(downloadDirectory, link, context, callback)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                downloadFileForQAndAbove(downloadDirectory, link, context, callback)
+            } else {
+                downloadFileForPreQ(downloadDirectory, link, context, callback)
+            }
+        }catch (e: Exception){
+            Log.d(TAG, "Error: $e")
+            callback(null, "Error: $e")
         }
     }
 
@@ -298,11 +300,11 @@ class CloudComm(
                         selectedFile?.url = URL(downloadUrl)
                         onUrlAvailable(downloadUrl)
                     }.addOnFailureListener { exception ->
-                        Log.d("TAG123", "onCreatexd: $exception")
+                        Log.d(TAG, "onCreatexd: $exception")
                         onUrlAvailable("Error: $exception")
                     }
                 }.addOnFailureListener {
-                    Log.d("TAG123", "Upload failure: $it")
+                    Log.d(TAG, "Upload failure: $it")
                     onUrlAvailable("Error: Upload failure: $it")
                     if (selectedFile != null) {
                         selectedFile.isUploading = false

@@ -99,33 +99,21 @@ fun SendScreen(
     index: Int
 ) {
 
-//    val authenticationState by viewModel.authenticationState.collectAsState()
-//
-//    if(authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN){
-//        navController.navigate(NFCSysScreen.Login.name)
-//    }
 
-    val additionalEncryption by viewModel.additionalEncryption.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
+
     var showEncryptionDialog by remember { mutableStateOf(false) }
 
-    val file = remember { viewModel.modelSelectedFiles.value[index] }
-//    val publicKey = viewModel.publicKey.collectAsState()
+    val file = remember { uiState.modelSelectedFiles[index] }
+
 
     // Efekt uboczny do wyświetlania dialogu
-    LaunchedEffect(additionalEncryption) {
-        showEncryptionDialog = additionalEncryption
+    LaunchedEffect(uiState.additionalEncryption) {
+        showEncryptionDialog = uiState.additionalEncryption
     }
 
-    BackHandler(enabled = true) {
-        // Wykonaj akcję powrotu do ekranu głównego
-//        navController.popBackStack()
-        navController.navigate(NFCSysScreen.Home.name){
-//            popUpTo(NFCSysScreen.Home.name){
-//                inclusive = true
-//            }
-        }
 
-    }
 
 
     if (showEncryptionDialog) {
@@ -143,7 +131,7 @@ fun SendScreen(
 
                         showEncryptionDialog = false
                     },
-                    enabled = file.publicKey.isNotEmpty(),
+                    enabled = uiState.publicKey.isNotEmpty(),
                     colors = ButtonDefaults.buttonColors(
                         buttonsColor, contentColor = Color.White
                     ),
@@ -169,27 +157,27 @@ fun SendScreen(
         )
     }
 
+    //sender mode
+    if ((uiState.additionalEncryption && uiState.publicKey.isNotEmpty()) || !uiState.additionalEncryption) {
 
-    if((additionalEncryption && file.publicKey.isNotEmpty()) || !additionalEncryption) {
-
-        val activeUrl = viewModel.activeURL.collectAsState()
+//        val activeUrl = viewModel.activeURL.collectAsState()
         viewModel.disableNFCReaderMode(context as Activity)
 
-        if(additionalEncryption){
+        if (uiState.additionalEncryption) {
+            //invoked cipher session key :)))
             //cipher key using public key
-            val encodedKeySecret = java.util.Base64.getDecoder().decode(file.secretKey)
-
-            viewModel.encryptDataRSA(encodedKeySecret, file.publicKey) { encryptedKey ->
-                // Ta część kodu zostanie wykonana, gdy operacja encryptDataRSA zostanie ukończona
-
-                val base64EncryptedKey = java.util.Base64.getEncoder().encodeToString(encryptedKey)
-                file.secretKey = base64EncryptedKey
-                Log.d("NFC123", "Encrypted key: $base64EncryptedKey")
-
-                Log.d("nfc123", "active url before update: ${activeUrl.value}")
-                viewModel.updateActiveURL(file)
-                Log.d("nfc123", "active url after update: ${activeUrl.value}")
-            }
+//            val encodedKeySecret = java.util.Base64.getDecoder().decode(file.secretKey)
+//
+//            viewModel.encryptDataRSA(encodedKeySecret, file.publicKey) { encryptedKey ->
+//                // Ta część kodu zostanie wykonana, gdy operacja encryptDataRSA zostanie ukończona
+//
+//                val base64EncryptedKey = java.util.Base64.getEncoder().encodeToString(encryptedKey)
+//                file.secretKey = base64EncryptedKey
+//                Log.d("NFC123", "Encrypted key: $base64EncryptedKey")
+//
+//                Log.d("nfc123", "active url before update: ${activeUrl.value}")
+//                viewModel.updateActiveURL(file)
+//                Log.d("nfc123", "active url after update: ${activeUrl.value}")
         }
 
 
@@ -291,9 +279,11 @@ fun SendScreen(
                 }
             }
         }
-    }
-    else{
+    } else {
         viewModel.enableNFCReaderMode(context as Activity)
     }
 }
+
+
+
 

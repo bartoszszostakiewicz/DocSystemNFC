@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
-import com.docsysnfc.flowtouch.model.flowtouchStates.CreateAccountState
+import com.docsysnfc.flowtouch.model.flowtouchStates.CreateAccountStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
 import com.docsysnfc.flowtouch.ui.theme.backgroundColor
 import com.docsysnfc.flowtouch.ui.theme.buttonsColor
@@ -45,15 +46,19 @@ fun CreateAccountScreen(navController: NavController, viewModel: MainViewModel) 
     var isEmailValid by remember { mutableStateOf(false) }
 
 
+    viewModel.uiState.collectAsState().value.let { uiState ->
+        if (uiState.createAccountStatus == CreateAccountStatus.SUCCESS) {
+            navController.navigate(NFCSysScreen.Home.name)
+        }
+    }
     LaunchedEffect(email, password, repeatPassword) {
+
         isFormValid =
             (password == repeatPassword && isEmailValid && password.length >= 6 && password.contains(
                 Regex(".*[0-9].*")
             ))
 
-        if (viewModel.createAccountState.value == CreateAccountState.SUCCESS) {
-            navController.navigate(NFCSysScreen.Home.name)
-        }
+
     }
 
 

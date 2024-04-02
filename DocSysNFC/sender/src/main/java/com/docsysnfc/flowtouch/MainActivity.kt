@@ -83,10 +83,12 @@ class MainActivity : ComponentActivity() {
 
 
         lifecycleScope.launch {
-            viewModel.activeURL.collect { ndefMessage ->
-                ndefMessage.let {
-                    startNFCService(it)
-                    Log.d("NFC1234", "Payload:  $ndefMessage")
+            viewModel.uiState.collect { uiState ->
+                uiState.ndefMessage.let { ndefMessage ->
+                    if (ndefMessage.isNotEmpty()) {
+                        startNFCService(ndefMessage)
+                        Log.d("NFC1234", "Payload:  $ndefMessage")
+                    }
                 }
             }
         }
@@ -116,7 +118,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume: ")
-        viewModel.setActivityVisibility(true)
         getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
             putBoolean("isActivityVisible", true)
             apply()
@@ -129,7 +130,6 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "onPause: ")
-        viewModel.setActivityVisibility(false)
         getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
             putBoolean("isActivityVisible", false)
             apply()

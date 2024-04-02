@@ -43,7 +43,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
-import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationState
+import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
 import com.docsysnfc.flowtouch.ui.theme.backgroundColor
 import com.docsysnfc.flowtouch.ui.theme.buttonsColor
@@ -59,17 +59,13 @@ import com.docsysnfc.flowtouch.ui.theme.whiteColor
 @Composable
 fun SettingsScreen(navController: NavHostController, viewModel: MainViewModel, context: Context) {
 
-    val authenticationState by viewModel.authenticationState.collectAsState()
 
-    if (authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN) {
-        navController.navigate(NFCSysScreen.Login.name)
-    }
-
+    val uiState by viewModel.uiState.collectAsState()
 
     val showDialog = remember { mutableStateOf(false) }
 
-    val additionalEncryption = viewModel.additionalEncryption.collectAsState().value
-    val cloudMirroring = viewModel.cloudMirroring.collectAsState().value
+    val additionalEncryption = uiState.additionalEncryption
+    val cloudMirroring = uiState.cloudMirroring
 
     if (showDialog.value) {
 
@@ -149,7 +145,7 @@ fun SettingsScreen(navController: NavHostController, viewModel: MainViewModel, c
         topBar = {
             HomeScreenTopBar(
                 title = stringResource(id = R.string.settings_title),
-                navController = NavController(context),
+                navController = navController,
                 viewModel = viewModel
             )
         }

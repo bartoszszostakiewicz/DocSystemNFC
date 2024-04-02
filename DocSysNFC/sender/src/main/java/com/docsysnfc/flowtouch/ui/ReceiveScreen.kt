@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -63,7 +64,7 @@ fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, contex
 
 //    val authenticationState by viewModel.authenticationState.collectAsState()
 //
-//    if(authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN){
+//    if(authenticationState == AuthenticationStatus.FAILURE || authenticationState == AuthenticationStatus.UNKNOWN){
 //        navController.navigate(NFCSysScreen.Login.name)
 //    }
 
@@ -91,11 +92,13 @@ fun ReceiveScreen(navController: NavController, viewModel: MainViewModel, contex
 
 
 
-    val fileList = viewModel.receiveFiles.collectAsState()
+//    val fileList = viewModel.receiveFiles.collectAsState()
 
-    Log.d("NFC123", "fileList: ${fileList.value.size}")
+    val uiState by viewModel.uiState.collectAsState()
 
-    ReceiveFileScreen(fileList.value, viewModel, context, showDeleteDialog)
+    Log.d("NFC123", "fileList: ${uiState.receivesFiles.size}")
+
+    ReceiveFileScreen(uiState.receivesFiles, viewModel, context, showDeleteDialog,navController)
 
 }
 
@@ -288,15 +291,16 @@ fun FileCard(
 }
 
 @Composable
-fun ReceiveFileScreen(fileList: List<File>, mainViewModel: MainViewModel, context: Context,showDeleteDialog: MutableState<Boolean>) {
+fun ReceiveFileScreen(fileList: List<File>, mainViewModel: MainViewModel, context: Context,showDeleteDialog: MutableState<Boolean>,navController: NavController) {
 
+    val uiState by mainViewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
-            HomeScreenTopBar(title = stringResource(id = R.string.received_file), navController = NavController(context), viewModel = mainViewModel)
+            HomeScreenTopBar(title = stringResource(id = R.string.received_file), navController = navController, viewModel = mainViewModel)
         }
     ) { innerPadding ->
-        val isLoading = mainViewModel.fileIsDownloading.collectAsState().value
+        val isLoading = uiState.fileIsDownloading
 
         Box(
             Modifier

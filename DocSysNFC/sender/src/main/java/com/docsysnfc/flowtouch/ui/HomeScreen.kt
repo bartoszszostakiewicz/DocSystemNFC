@@ -67,7 +67,7 @@ import androidx.wear.compose.material.CheckboxDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
-import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationState
+import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationStatus
 import com.docsysnfc.flowtouch.model.File
 import com.docsysnfc.flowtouch.model.flowtouchStates.InternetConnectionStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCStatus
@@ -135,9 +135,7 @@ fun TopBarClickableIcon(navController: NavController, viewModel: MainViewModel) 
             contentDescription = stringResource(id = R.string.log_out),
             modifier = Modifier
                 .clickable {
-                    FirebaseAuth
-                        .getInstance()
-                        .signOut()
+                    viewModel.logOff()
                     navController.navigate(NFCSysScreen.Login.name)
                 }
                 .padding(end = 30.dp)
@@ -173,30 +171,32 @@ fun SwipeableTile(
     val downloadStart = remember { mutableStateOf(false) }
 //    val isUploading = remember { mutableStateOf(file.isUploading) }
 
-    val cloudMirroring = viewModel.cloudMirroring.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
-    val additonalEncrytpion = viewModel.additionalEncryption.collectAsState()
+//    val cloudMirroring = viewModel.cloudMirroring.collectAsState()
+//
+//    val additonalEncrytpion = viewModel.additionalEncryption.collectAsState()
 
 //    val isUploading = viewModel.uploadComplete.collectAsState()
 
 
-    if (cloudMirroring.value) {
+    if (uiState.uploadComplete) {
         if (!fileIsOnDevice.value) {
             viewModel.setDownloadStatus(true)
             downloadStart.value = true
         }
     }
-    if (additonalEncrytpion.value) {
+    if (uiState.additionalEncryption) {
         isCipher.value = true
         viewModel.handleEncryption(file, isCipher.value)
     }
 
 
-    val uploadComplete by viewModel.uploadComplete.collectAsState()
-    val fileIsDownloading by viewModel.fileIsDownloading.collectAsState()
+//    val uploadComplete by viewModel.uploadComplete.collectAsState()
+//    val fileIsDownloading by viewModel.fileIsDownloading.collectAsState()
 
 
-    LaunchedEffect(fileIsDownloading) {
+    LaunchedEffect(uiState.fileIsDownloading) {
         if (downloadStart.value) {
             viewModel.downloadFile(file.downloadLink, receivesFiles = false)
             downloadStart.value = false
@@ -215,13 +215,13 @@ fun SwipeableTile(
     }
 
 
-    LaunchedEffect(uploadComplete) {
+    LaunchedEffect(uiState) {
 
-        if (uploadComplete) {
+        if (uiState.uploadComplete) {
 
             navController.navigate(
                 "${NFCSysScreen.Send.name}/${
-                    viewModel.modelSelectedFiles.value.indexOf(
+                    uiState.modelSelectedFiles.indexOf(
                         file
                     )
                 }"
@@ -419,8 +419,8 @@ fun SwipeableTile(
                 onClick = {
 
                     Log.d(TAG, "linkztondhuehui: ${file.url}")
-                    Log.d("nfc123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value.size}")
-                    Log.d("nfc123", "linkztondhuehui: ${viewModel.modelSelectedFiles.value[0].url}")
+                    Log.d("nfc123", "linkztondhuehui: ${uiState.modelSelectedFiles.size}")
+                    Log.d("nfc123", "linkztondhuehui: ${uiState.modelSelectedFiles[0].url}")
 
                     viewModel.pushFileIntoCloud(file, isCipher.value)
 
@@ -467,8 +467,8 @@ fun ChooseFileButton(
 @Composable
 fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
 
-
-    val authenticationState by viewModel.authenticationState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+//    val authenticationState by viewModel.authenticationState.collectAsState()
 
 
     viewModel.checkKey()
@@ -478,21 +478,21 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
     LaunchedEffect(Unit, viewModel) {
 
-        if (authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN) {
-            navController.navigate(NFCSysScreen.Login.name)
-        }
+       if(uiState.authenticationStatus == AuthenticationStatus.FAILURE || uiState.authenticationStatus == AuthenticationStatus.UNKNOWN) {
+          // navController.navigate(NFCSysScreen.Login.name)
+       }
 
         viewModel.checkNFCStatus()
         viewModel.checkInternetStatus(context = context)
     }
 
 
-    val nfcStatus by viewModel.nfcStatus.collectAsState()
+//    val nfcStatus by viewModel.nfcStatus.collectAsState()
 
-    val internetConnectionStatus by viewModel.internetConnStatus.collectAsState()
+//    val internetConnectionStatus by viewModel.internetConnStatus.collectAsState()
 
 
-    when (nfcStatus) {
+    when (uiState.nfcStatus) {
         NFCStatus.Enabled -> {
             Log.d(TAG, "enabled")
 
@@ -515,12 +515,15 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
         }
     }
 
-    when(internetConnectionStatus){
+    when(uiState.internetConnStatus){
         InternetConnectionStatus.CONNECTED -> {
             Log.d(TAG, "internet connected")
         }
         InternetConnectionStatus.DISCONNECTED -> {
             PromptToNoInternetConnectionDialog()
+        }
+        InternetConnectionStatus.UNKNOWN -> {
+            Log.d(TAG, "internet unknown")
         }
     }
 
@@ -570,12 +573,12 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
             Spacer(modifier = Modifier.weight(1f, true))
 
-            if (viewModel.modelSelectedFiles.collectAsState().value.isNotEmpty()) {
+            if (uiState.modelSelectedFiles.isNotEmpty()) {
                 Filters(viewModel)
             }
 
             SwipeableTiles(
-                selectedFiles = viewModel.modelSelectedFiles.collectAsState().value,
+                selectedFiles = uiState.modelSelectedFiles,
                 homeViewModel = viewModel,
                 navController = navController
             )
