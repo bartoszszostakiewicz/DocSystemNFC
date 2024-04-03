@@ -1,5 +1,6 @@
 package com.docsysnfc.flowtouch
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
 import android.content.ActivityNotFoundException
@@ -8,32 +9,28 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Uri
 import android.nfc.NfcAdapter
-import android.nfc.Tag
 import android.os.Environment
-import android.os.Vibrator
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.docsysnfc.R
-import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationState
 import com.docsysnfc.flowtouch.model.CloudComm
-import com.docsysnfc.flowtouch.model.flowtouchStates.CreateAccountState
 import com.docsysnfc.flowtouch.model.File
 import com.docsysnfc.flowtouch.model.FileManager
-import com.docsysnfc.flowtouch.model.flowtouchStates.InternetConnectionStatus
 import com.docsysnfc.flowtouch.model.NFCComm
+import com.docsysnfc.flowtouch.model.SecurityManager
+import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationStatus
+import com.docsysnfc.flowtouch.model.flowtouchStates.CreateAccountStatus
+import com.docsysnfc.flowtouch.model.flowtouchStates.InternetConnectionStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
-import com.docsysnfc.flowtouch.model.SecurityManager
+import com.docsysnfc.flowtouch.model.flowtouchStates.UiState
 import com.google.firebase.auth.EmailAuthProvider
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -41,146 +38,121 @@ import java.net.URL
 import java.util.Base64
 import javax.crypto.spec.SecretKeySpec
 
-private const val TAG = "NFC123"
+private const val TAG = "NFC1234"
 
 class MainViewModel(
     app: Application,
 ) : AndroidViewModel(app) {
 
-
+    @SuppressLint("StaticFieldLeak")
     private val context = getApplication<Application>().applicationContext
 
-
-    private val fileManager = FileManager()
     private val cloudComm = CloudComm()
     private val securityManager = SecurityManager()
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    private val nfcCommm = NFCComm()
+
+    @SuppressLint("StaticFieldLeak")
+    private val nfcComm = NFCComm()
 
 
-
-
-    private val _fileIsCipher = MutableStateFlow(false)
-    val fileIsCipher = _fileIsCipher.asStateFlow()
-
-
-    private val _fileIsDownloading = MutableStateFlow(false)
-    val fileIsDownloading = _fileIsDownloading.asStateFlow()
-
-
-    //required for having the latest selected files
-    private val _receivesFiles = MutableStateFlow<List<File>>(emptyList())
-    val receiveFiles = _receivesFiles.asStateFlow()
-
-
-    //its required for having the latest selected files but i think its duplicated with fileManager.getFiles() it will be checked
-    private val _modelSelectedFiles = MutableStateFlow<List<File>>(emptyList())
-    val modelSelectedFiles = _modelSelectedFiles.asStateFlow()
-
-    fun filterSelectedFilesTypes(selectedTypes: SnapshotStateList<String>) {
-        _filteredSelectedFiles.value = _modelSelectedFiles.value.filter { file ->
-            selectedTypes.contains(file.type)
-        }
-    }
-
-    private val _filteredSelectedFiles = MutableStateFlow<List<File>>(emptyList())
-    val filteredSelectedFiles = _filteredSelectedFiles.asStateFlow()
-
-
-    //its required for nfc status is available or not
-    private val _nfcStatus = MutableStateFlow(NFCStatus.Unknown)
-    val nfcStatus = _nfcStatus.asStateFlow()
-
-    private val _internetConnStatus = MutableStateFlow(InternetConnectionStatus.DISCONNECTED)
-    val internetConnStatus = _internetConnStatus.asStateFlow()
-
-
-    //probalbly to delete
-    private val _activeURL = MutableStateFlow("google.com")
-    val activeURL = _activeURL.asStateFlow()
-
-
-    //probalby to delete
-    private val _isActivityVisible = MutableStateFlow(true)
-    val isActivityVisible = _isActivityVisible.asStateFlow()
-
-
-    //it is required
-    private val _authenticationState = MutableStateFlow(AuthenticationState.UNKNOWN)
-    val authenticationState = _authenticationState.asStateFlow()
-
-
-    //required for firebase
-    private val _createAccountState = MutableStateFlow(CreateAccountState.UNKNOWN)
-    val createAccountState = _createAccountState.asStateFlow()
-
-    //required for having the latest nfc tag
-    private var _nfcTag = MutableStateFlow<Tag?>(null)
-    val nfcTag: StateFlow<Tag?> = _nfcTag.asStateFlow()
-
-    private val _additionalEncryption = MutableStateFlow(false)
-    val additionalEncryption = _additionalEncryption.asStateFlow()
-
-    fun setAdditionalEncryption(value: Boolean) {
-        _additionalEncryption.value = value
-    }
-
-    private val _cloudMirroring = MutableStateFlow(false)
-    val cloudMirroring = _cloudMirroring.asStateFlow()
-
-    fun setCloudMirroring(value: Boolean) {
-        _cloudMirroring.value = value
-    }
+    private val _uiState = MutableStateFlow(UiState())
+    val uiState = _uiState.asStateFlow()
 
 
     init {
 
-        nfcCommm.initNFCAdapter(context)
+        nfcComm.initNFCAdapter(context)
         initFilesFromFirebaseStorage()
-        //every 1 second we are checking the nfc status
-        viewModelScope.launch {
+        if (cloudComm.getAuthInstance().currentUser != null) {
+            _uiState.update { it.copy(authenticationStatus = AuthenticationStatus.SUCCESS) }
+        }
 
-            while (true) {
+    }
 
-//                Log.d("NFC1235", "Active url =  ${_activeURL.value}")
-                kotlinx.coroutines.delay(1000)
-                if (auth.currentUser != null) {
-//                    Log.d(TAG, "User is authenticated ${auth.currentUser?.email}")
-                    _authenticationState.value = AuthenticationState.SUCCESS
-                    _navigationDestination.value = NFCSysScreen.Home
-
-                } else {
-//                    Log.d(TAG, "User is not authenticated")
-                    _authenticationState.value = AuthenticationState.FAILURE
-                    _navigationDestination.value = NFCSysScreen.Login
-
-                }
+    fun filterSelectedFilesTypes(selectedTypes: SnapshotStateList<String>) {
+        _uiState.update { currentState ->
+            val filteredFiles = currentState.modelSelectedFiles.filter { file ->
+                selectedTypes.contains(file.type)
             }
-//            _authenticationState.value =
-//                if (isUserAuthenticated) AuthenticationState.SUCCESS else AuthenticationState.FAILURE
-
-
+            currentState.copy(filteredSelectedFiles = filteredFiles)
         }
     }
 
-    fun setActivityVisibility(isVisible: Boolean) {
-        _isActivityVisible.value = isVisible
+
+    fun setAdditionalEncryption(value: Boolean) {
+        val newValue = if (value) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.additional_encryption_on),
+                Toast.LENGTH_SHORT
+            )
+                .show()
+            true
+        } else {
+            Toast.makeText(
+                context,
+                context.getString(R.string.additional_encryption_off),
+                Toast.LENGTH_SHORT
+            )
+                .show()
+            false
+        }
+        _uiState.update { it.copy(additionalEncryption = newValue) }
     }
 
+
+    fun setCloudMirroring(value: Boolean) {
+        val newValue = if (value) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.cloud_mirroring_on),
+                Toast.LENGTH_SHORT
+            ).show()
+            true
+        } else {
+            Toast.makeText(
+                context,
+                context.getString(R.string.cloud_mirroring_off),
+                Toast.LENGTH_SHORT
+            ).show()
+            false
+        }
+        _uiState.update { it.copy(cloudMirroring = newValue) }
+    }
+
+
+    private fun markFileAsUploaded(file: File) {
+        _uiState.update { currentState ->
+            val updatedFiles = currentState.modelSelectedFiles.map {
+                if (it == file) it.copy(uploadComplete = true) else it
+            }
+            currentState.copy(modelSelectedFiles = updatedFiles)
+        }
+    }
+
+
     fun logOff() {
-        navigationDestination.value = NFCSysScreen.Login
+        cloudComm.getAuthInstance().signOut()
+        _uiState.update { it.copy(authenticationStatus = AuthenticationStatus.UNKNOWN) }
     }
 
     fun setFileIsCipher(isCipher: Boolean) {
-        _fileIsCipher.value = isCipher
+        val newCipher = if (isCipher) {
+            Toast.makeText(context, context.getString(R.string.file_is_encrypted), Toast.LENGTH_SHORT).show()
+            true
+        } else {
+            Toast.makeText(context, context.getString(R.string.file_is_not_encrypted), Toast.LENGTH_SHORT).show()
+            false
+        }
+        _uiState.compareAndSet(
+            _uiState.value,
+            _uiState.value.copy(fileIsCipher = newCipher)
+        )
     }
 
 
     fun addFile(uri: Uri) {
         viewModelScope.launch {
-            val currentList = _modelSelectedFiles.value.toMutableList()
-            val newFile = fileManager.toFile(uri, context)
-
+            val newFile = FileManager.toFile(uri, context)
             var fileName = newFile.name
             var fileExtension = ""
             val dotIndex = newFile.name.lastIndexOf('.')
@@ -189,27 +161,37 @@ class MainViewModel(
                 fileExtension = newFile.name.substring(dotIndex)
             }
 
-            var uniqueName = fileName
-            var counter = 1
-            while (currentList.any { existingFile -> existingFile.name == "$uniqueName$fileExtension" }) {
-                uniqueName = "$fileName${counter++}"
-            }
+            _uiState.update { currentState ->
+                val currentList = currentState.modelSelectedFiles.toMutableList()
 
-            if (uniqueName != fileName) {
-                newFile.renameTo(uniqueName + fileExtension)
-                Log.d(TAG, "Zmiana nazwy pliku na: $uniqueName$fileExtension")
-            }
+                var uniqueName = fileName
+                var counter = 1
+                while (currentList.any { existingFile -> existingFile.name == "$uniqueName$fileExtension" }) {
+                    uniqueName = "$fileName${counter++}"
+                }
 
-            val isFileAlreadyAdded = currentList.any { existingFile ->
-                existingFile.name == newFile.name
-            }
+                if (uniqueName != fileName) {
+                    newFile.renameTo(uniqueName + fileExtension)
+                    Log.d(TAG, "Changing file name to: $uniqueName$fileExtension")
+                }
 
-            if (isFileAlreadyAdded) {
-                Toast.makeText(context, "Plik już dodany", Toast.LENGTH_SHORT).show()
-            } else {
-                currentList.add(newFile)
-                _modelSelectedFiles.value = currentList
+                val isFileAlreadyAdded = currentList.any { existingFile ->
+                    existingFile.name == newFile.name
+                }
 
+                if (!isFileAlreadyAdded) {
+                    currentList.add(newFile)
+                }
+
+                if (isFileAlreadyAdded) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.file_already_added),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                currentState.copy(modelSelectedFiles = currentList)
             }
         }
     }
@@ -221,73 +203,83 @@ class MainViewModel(
 
 
     fun checkNFCStatus() {
-        val nfcAdapter = NfcAdapter.getDefaultAdapter(this.context)
-        _nfcStatus.value = when {
+        val nfcAdapter = NfcAdapter.getDefaultAdapter(context)
+        val newStatus = when {
             nfcAdapter == null -> NFCStatus.NotSupported
             !nfcAdapter.isEnabled -> NFCStatus.Disabled
             else -> NFCStatus.Enabled
         }
+        _uiState.update { it.copy(nfcStatus = newStatus) }
     }
 
 
     fun signInWithEmailAndPassword(email: String, password: String) {
+        if (email.isEmpty() || password.isEmpty()) {
+            _uiState.update { it.copy(authenticationStatus = AuthenticationStatus.FAILURE) }
 
-        auth.signInWithEmailAndPassword(email, password).addOnCompleteListener {
-            if (it.isSuccessful) {
-                //Log.d("qwertty", "1signInWithEmail:success")
-                _authenticationState.value = AuthenticationState.SUCCESS
-            } else {
-                //Log.w("qwertty", "signInWithEmail:failure", it.exception)
-                _authenticationState.value = AuthenticationState.FAILURE
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.invalid_credentials),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }.isSuccessful
+        } else {
+            cloudComm.getAuthInstance().signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    val newAuthStatus = if (task.isSuccessful) {
+                        Log.d(TAG, "signInWithEmail:success")
+                        AuthenticationStatus.SUCCESS
+                    } else {
+                        Log.d(TAG, "signInWithEmail:failure", task.exception)
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.invalid_credentials),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        AuthenticationStatus.FAILURE
+                    }
 
-
+                    _uiState.update { it.copy(authenticationStatus = newAuthStatus) }
+                }
+        }
     }
+
 
     fun createAccount(email: String, password: String) {
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener {
-                if (it.isSuccessful) {
-                    Log.d(TAG, "createUserWithEmail:success")
-                    _createAccountState.value = CreateAccountState.SUCCESS
-                } else {
-                    Log.w(TAG, "createUserWithEmail:failure", it.exception)
-                    _createAccountState.value = CreateAccountState.FAILURE
-                }
-            }.isSuccessful
+
+        val newAuthStatus = if (email.isEmpty() || password.isEmpty()) {
+            CreateAccountStatus.FAILURE
+        } else {
+            cloudComm.getAuthInstance().createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener {
+                    if (it.isSuccessful) {
+                        Log.d(TAG, "createUserWithEmail:success")
+                        CreateAccountStatus.SUCCESS
+                    } else {
+                        Log.w(TAG, "createUserWithEmail:failure", it.exception)
+                        CreateAccountStatus.FAILURE
+                    }
+                }.isSuccessful
+            CreateAccountStatus.UNKNOWN
+        }
+        _uiState.update { it.copy(createAccountStatus = newAuthStatus) }
+
     }
 
-
-
-    private val _navigationDestination = MutableStateFlow(NFCSysScreen.Home)
-    val navigationDestination = _navigationDestination
 
     fun setNavigationDestination(destination: NFCSysScreen) {
         Log.d(TAG, "setNavigationDestination: $destination")
-        _navigationDestination.value = destination
+        _uiState.update { it.copy(navigationDestination = destination) }
     }
-
-
 
 
     fun enableNFCReaderMode(activity: Activity) {
-        nfcCommm.enableNFCReader(activity, this)
+        nfcComm.enableNFCReader(activity, this)
     }
 
     fun disableNFCReaderMode(activity: Activity) {
-        nfcCommm.disableNFCReader(activity)
+        nfcComm.disableNFCReader(activity)
     }
 
-    suspend fun downloadFile(file: File) {
+    fun downloadFile(file: File) {
 
-        Log.d(TAG, "Rozpoczęcie pobierania pliku: ${file.downloadLink}")
-        _fileIsDownloading.value = true
+        Log.d(TAG, "Starting file download: ${file.downloadLink}")
+
+        _uiState.update { it.copy(fileIsDownloading = true) }
 
         cloudComm.downloadFile(
             downloadDirectory = "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc/Received",
@@ -295,18 +287,17 @@ class MainViewModel(
             context = context
         ) { fileUri, mimeType ->
             if (fileUri == null) {
-                Log.e(TAG, "Nie udało się pobrać pliku, fileUri jest null.")
-                _fileIsDownloading.value = false
+                Log.e(TAG, "Failed to download file, fileUri is null.")
+                _uiState.update { it.copy(fileIsDownloading = false) }
                 return@downloadFile
             }
 
-
-            Log.d(TAG, "Pobrany plik Uri: $fileUri, Typ MIME: $mimeType")
+            Log.d(TAG, "Downloaded file Uri: $fileUri, MIME Type: $mimeType")
 
             val fileName =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                     FileManager.getNameFile(context, fileUri, extension = true).also {
-                        Log.d(TAG, "Nazwa pliku (API >= Q): $it")
+                        Log.d(TAG, "File name (API >= Q): $it")
                     }
                 } else {
                     fileUri.lastPathSegment ?: "unknown"
@@ -320,59 +311,70 @@ class MainViewModel(
 
             var cnt = 0
 
-            Log.d(TAG, "przed: $fileSize")
-
-            Log.d(TAG, "FILE URI: $fileUri")
 
             while (fileSize == 0.0 && cnt < 1000) {
                 cnt++
                 fileSize =
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                         FileManager.getSizeOfFileFromContentUri(context, fileUri).also {
-                            //                    Thread.sleep(10)
-                            Log.d(TAG, "Rozmiar pliku (API >= Q): $it MB")
+                            Log.d(TAG, "File size (API >= Q): $it MB")
                         }
                     } else {
                         FileManager.getSizeFileFromFileUri(fileUri).also {
-                            Log.d(TAG, "Rozmiar pliku (API < Q): $it MB")
+                            Log.d(TAG, "File size (API < Q): $it MB")
                         }
                     }
             }
-            Log.d(TAG, "cnt: $cnt")
 
-            Log.d(TAG, "pozyskany rozmiar pliku: $fileSize")
+
+            Log.d(TAG, "Size of downloaded file: $fileSize")
 
             file.name = fileName
             file.uri = fileUri
             file.byteArray = fileByteArray
             file.size = fileSize
-            file.type = mimeType.toString()
+            file.type = mimeType
             file.url = URL("https://www.google.com")
 
+
+            val updatedFile = file.copy(
+                name = fileName,
+                uri = fileUri,
+                byteArray = fileByteArray,
+                size = fileSize,
+                type = mimeType,
+                url = URL("https://www.google.com")
+            )
 
 
 
             Log.d(
-                "NFC123",
-                "Tworzenie obiektu File: ${file.name}, Rozmiar: ${file.size} MB"
+                TAG,
+                "Creating File object: ${file.name}, Size: ${file.size} MB"
             )
 
-            updateReceivedFiles(file)
 
-            Log.d(TAG, "Aktualizacja otrzymanych plików: ${file.name}")
+            _uiState.update { currentState ->
+                currentState.copy(
+                    receivesFiles = currentState.receivesFiles + updatedFile,
+                    fileIsDownloading = false
+                )
+            }
+
+            Log.d(TAG, "Updating received files: ${file.name}")
         }
 
     }
 
-    suspend fun downloadFile(downloadLink: String, receivesFiles: Boolean = true) {
+    fun downloadFile(downloadLink: String, receivesFiles: Boolean = true) {
 
         val separator = R.string.separator.toString()
         val parts = downloadLink.split(separator)
 
         Log.d(TAG, "Parts: $parts")
+        Log.d(TAG, "Start downloading file: $downloadLink")
 
-        Log.d(TAG, "Rozpoczęcie pobierania pliku: $downloadLink")
-        _fileIsDownloading.value = true
+        _uiState.update { it.copy(fileIsDownloading = true) }
 
         cloudComm.downloadFile(
             downloadDirectory = "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc/Received",
@@ -380,18 +382,17 @@ class MainViewModel(
             context = context
         ) { fileUri, mimeType ->
             if (fileUri == null) {
-                Log.e("NFC123", "Nie udało się pobrać pliku, fileUri jest null.")
-                _fileIsDownloading.value = false
+                Log.e(TAG, "Failed to download file, fileUri is null.")
+                _uiState.update { it.copy(fileIsDownloading = false) }
                 return@downloadFile
             }
 
-
-            Log.d(TAG, "Pobrany plik Uri: $fileUri, Typ MIME: $mimeType")
+            Log.d(TAG, "Downloaded file Uri: $fileUri, MIME Type: $mimeType")
 
             val fileName =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                     FileManager.getNameFile(context, fileUri, extension = true).also {
-                        Log.d(TAG, "Nazwa pliku (API >= Q): $it")
+                        Log.d(TAG, "File name (API >= Q): $it")
                     }
                 } else {
                     fileUri.lastPathSegment ?: "unknown"
@@ -405,45 +406,39 @@ class MainViewModel(
 
             var cnt = 0
 
-            Log.d(TAG, "przed: $fileSize")
-
-            Log.d(TAG, "FILE URI: $fileUri")
-
             while (fileSize == 0.0 && cnt < 1000) {
                 cnt++
                 fileSize =
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                         FileManager.getSizeOfFileFromContentUri(context, fileUri).also {
-                            //                    Thread.sleep(10)
-                            Log.d(TAG, "Rozmiar pliku (API >= Q): $it MB")
+                            Log.d(TAG, "File size (API >= Q): $it MB")
                         }
                     } else {
                         FileManager.getSizeFileFromFileUri(fileUri).also {
-                            Log.d(TAG, "Rozmiar pliku (API < Q): $it MB")
+                            Log.d(TAG, "File size (API < Q): $it MB")
                         }
                     }
             }
-            Log.d(TAG, "cnt: $cnt")
+            Log.d(TAG, "Collision counter: $cnt")
 
-            Log.d(TAG, "pozyskany rozmiar pliku: $fileSize")
-
+            Log.d(TAG, "Obtained file size: $fileSize")
 
             val downloadedFile = File(
                 fileName,
                 fileUri,
                 downloadLink,
                 fileSize,
-                mimeType.toString(),
+                mimeType,
                 URL("https://www.google.com"),
                 fileByteArray,
                 ByteArray(0),
                 "",
                 "",
-                encryptionState = false
+                encryptionState = false,
 
-            )
+                )
 
-            if (parts.size == 3) {
+            if (parts.size >= 3) {
                 downloadedFile.encryptedByteArray =
                     FileManager.fileToByteArray(context, fileUri, false)!!
                 downloadedFile.secretKey = parts[1]
@@ -451,141 +446,137 @@ class MainViewModel(
                 downloadedFile.isCipher = true
             }
 
-            Log.d(
-                "NFC123",
-                "Tworzenie obiektu File: ${downloadedFile.name}, Rozmiar: ${downloadedFile.size} MB"
-            )
             if (receivesFiles) {
-                updateReceivedFiles(downloadedFile)
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        receivesFiles = currentState.receivesFiles + downloadedFile,
+                        fileIsDownloading = false
+                    )
+                }
             } else {
-                updateSelectedFiles(downloadedFile)
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        modelSelectedFiles = currentState.modelSelectedFiles + downloadedFile,
+                        fileIsDownloading = false
+                    )
+                }
             }
-            Log.d(TAG, "Aktualizacja otrzymanych plików: ${downloadedFile.name}")
+            Log.d(TAG, "Updating received files: ${downloadedFile.name}")
+
         }
     }
 
     private fun updateSelectedFiles(newFile: File) {
-        _fileIsDownloading.value = false
+        _uiState.update { currentState ->
 
-        _modelSelectedFiles.update { currentFiles ->
-            Log.d(TAG, "Nazwa dodawanego pliku: ${newFile.name}")
-            Log.d(TAG, "Uri dodawanego pliku: ${newFile.uri}")
-            Log.d(TAG, "DLUGSC TABLICY: ${newFile.byteArray.size}")
-
-            // Oddzielenie nazwy pliku od rozszerzenia
             val nameWithoutExtension = newFile.name.substringBeforeLast(".")
             val extension = newFile.name.substringAfterLast(".", "")
 
             var newName = newFile.name
             var counter = 1
-            // Sprawdzenie kolizji nazw
-            while (currentFiles.any { it.name == newName }) {
-                // Jeżeli istnieje kolizja nazw, dodaj numer do nazwy pliku
+
+            while (currentState.modelSelectedFiles.any { it.name == newName }) {
+
                 newName =
                     "$nameWithoutExtension($counter)${if (extension.isNotEmpty()) ".$extension" else ""}"
                 counter++
             }
 
-            // Sprawdzenie, czy nazwa pliku została zmieniona
             if (newName != newFile.name) {
-                newFile.name = newName // Ustawienie nowej nazwy pliku
-                Log.d(TAG, "Zmieniono nazwę na: $newName")
+                newFile.name = newName
             }
-            val updatedFiles = currentFiles.map { existingFile ->
+
+
+            val updatedFiles = currentState.modelSelectedFiles.map { existingFile ->
                 if (existingFile.downloadLink == newFile.downloadLink) {
-                    // Plik istnieje, więc zaktualizuj jego informacje
+
                     Toast.makeText(
                         context,
-                        "Informacje o pliku ${newFile.name} zostały zaktualizowane.",
+                        "${context.getString(R.string.file_info)} ${newFile.name} ${
+                            context.getString(
+                                R.string.refreshed
+                            )
+                        }",
                         Toast.LENGTH_LONG
                     ).show()
-
-                    // Zaktualizuj tylko potrzebne pola
                     existingFile.apply {
                         byteArray = newFile.byteArray
                         uri = newFile.uri
-                        // Możesz dodać więcej pól do aktualizacji
+
                     }
                 } else {
-                    // Plik nie wymaga aktualizacji
+
                     existingFile
                 }
-
             }
 
-            updatedFiles
+            currentState.copy(modelSelectedFiles = updatedFiles, fileIsDownloading = false)
         }
     }
 
 
     private fun updateReceivedFiles(newFile: File) {
-        _fileIsDownloading.value = false
+        _uiState.update { currentState ->
+            Log.d(TAG, "Name of the file being added: ${newFile.name}")
+            Log.d(TAG, "URI of the file being added: ${newFile.uri}")
 
-        _receivesFiles.update { currentFiles ->
-            Log.d(TAG, "Nazwa dodawanego pliku: ${newFile.name}")
-            Log.d(TAG, "Uri dodawanego pliku: ${newFile.uri}")
-
-            // Oddzielenie nazwy pliku od rozszerzenia
             val nameWithoutExtension = newFile.name.substringBeforeLast(".")
             val extension = newFile.name.substringAfterLast(".", "")
 
             var newName = newFile.name
             var counter = 1
-            // Sprawdzenie kolizji nazw
-            while (currentFiles.any { it.name == newName }) {
-                // Jeżeli istnieje kolizja nazw, dodaj numer do nazwy pliku
+
+            while (currentState.receivesFiles.any { it.name == newName }) {
                 newName =
                     "$nameWithoutExtension($counter)${if (extension.isNotEmpty()) ".$extension" else ""}"
                 counter++
             }
 
-            // Sprawdzenie, czy nazwa pliku została zmieniona
+
             if (newName != newFile.name) {
-                newFile.name = newName // Ustawienie nowej nazwy pliku
-                Log.d(TAG, "Zmieniono nazwę na: $newName")
+                newFile.name = newName
+                Log.d(TAG, "Renamed to: $newName")
             }
 
-            // Sprawdzenie, czy plik z takim samym URI lub linkiem do pobrania już istnieje
-            if (currentFiles.any {
-                    it.downloadLink == newFile.downloadLink
-                }
-            ) {
 
+            val updatedFiles =
+                if (currentState.receivesFiles.any { it.downloadLink == newFile.downloadLink }) {
+                    Toast.makeText(
+                        context,
+                        "${context.getString(R.string.file)} ${newFile.name} ${context.getString(R.string.already_get)}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    currentState.receivesFiles.map { existingFile ->
+                        if (existingFile.downloadLink == newFile.downloadLink) {
 
-                Toast.makeText(
-                    context,
-                    "Plik ${newFile.name} jest już otrzymany.",
-                    Toast.LENGTH_LONG
-                ).show()
-                //update this file
-                val updatedFiles = currentFiles.map { existingFile ->
-                    if (existingFile.downloadLink == newFile.downloadLink) {
-                        // Plik istnieje, więc zaktualizuj jego informacje
-                        Toast.makeText(
-                            context,
-                            "Informacje o pliku ${newFile.name} zostały zaktualizowane.",
-                            Toast.LENGTH_LONG
-                        ).show()
+                            Toast.makeText(
+                                context,
+                                "${context.getString(R.string.file_info)} ${newFile.name} ${
+                                    context.getString(
+                                        R.string.refreshed
+                                    )
+                                }",
+                                Toast.LENGTH_LONG
+                            ).show()
 
-                        // Zaktualizuj tylko potrzebne pola
-                        existingFile.apply {
-                            name = newFile.name
-                            size = newFile.size
-                            byteArray = newFile.byteArray
-                            uri = newFile.uri
-                            type = newFile.type
-                            // Możesz dodać więcej pól do aktualizacji
+                            existingFile.apply {
+                                name = newFile.name
+                                size = newFile.size
+                                byteArray = newFile.byteArray
+                                uri = newFile.uri
+                                type = newFile.type
+                            }
+                        } else {
+
+                            existingFile
                         }
-                    } else {
-                        // Plik nie wymaga aktualizacji
-                        existingFile
                     }
+                } else {
+
+                    currentState.receivesFiles + newFile
                 }
-                currentFiles
-            } else {
-                // Dodanie nowego pliku do listy
-                currentFiles + newFile
-            }
+
+            currentState.copy(receivesFiles = updatedFiles, fileIsDownloading = false)
         }
     }
 
@@ -599,6 +590,7 @@ class MainViewModel(
         }
 
     }
+
 
     private fun openFileForQAndAbove(context: Context, fileUri: Uri, mimeType: String) {
         val intent = Intent(Intent.ACTION_VIEW)
@@ -626,7 +618,7 @@ class MainViewModel(
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(
                 context,
-                "Nie znaleziono aplikacji do otwarcia tego typu pliku.",
+                context.getString(R.string.no_app_info),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -634,21 +626,23 @@ class MainViewModel(
 
 
     fun setDownloadStatus(b: Boolean) {
-        _fileIsDownloading.value = b
+        _uiState.update { it.copy(fileIsDownloading = b) }
     }
 
-    //zakladamy ze bytearray jest wypelnione
+
     fun handleEncryption(file: File, encryption: Boolean, reading: Boolean = false) {
         viewModelScope.launch {
 
-            Log.d(TAG, "Plik ${file.name}: ${file.byteArray.size} bajtów")
+            Log.d(TAG, "File ${file.name}: ${file.byteArray.size} bytes")
 
 
             if (encryption && file.encryptedByteArray.isEmpty()) {
                 val startTime = System.currentTimeMillis()
+
                 file.encryptionState = true
 
                 val encryptedPack = securityManager.encryptDataAES(file.byteArray)
+
                 file.encryptedByteArray = encryptedPack.first
                 file.secretKey = Base64.getEncoder().encodeToString(encryptedPack.second.encoded)
                 file.iV = Base64.getEncoder().encodeToString(encryptedPack.third)
@@ -657,203 +651,162 @@ class MainViewModel(
                 Log.d(TAG, "First ten bytes of encrypted data: ${file.encryptedByteArray.take(10)}")
                 Log.d(TAG, "IV LEN ${file.iV.length} ")
                 Log.d(TAG, "Data LEN  = ${file.encryptedByteArray.size}")
-                Log.d(TAG, "IV = ${file.iV.toString()}")
-                Log.d(TAG, "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
-
-                file.encryptionState = false
-                val endTime = System.currentTimeMillis()
-                val duration = endTime - startTime
-                Log.d(TAG, "Czas operacji szyfrowania: $duration ms")
-
-            } else if (reading && file.encryptedByteArray.isNotEmpty()) {
-                val startTime = System.currentTimeMillis()
-                file.encryptionState = true
-
-
-                val decodedKey = Base64.getDecoder().decode(file.secretKey)
-                Log.d(TAG, "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
-
-
-                val public = securityManager.getPublicKey(auth.currentUser?.email.toString())
-//                val privateKey = securityManager.getPrivateKey(context ,auth.currentUser?.email.toString())
-
-                Log.d(TAG, "public key: $public")
-//                Log.d("NFC1234", "private key: $privateKey")
-                val arrayDecodedKey: Array<ByteArray> =
-                    securityManager.splitDataIntoRSABlocks(decodedKey, 2048)
-
-                if (decodedKey.size != 16 && decodedKey.size != 24 && decodedKey.size != 32) {
-
-                    securityManager.decryptDataRSA(
-                        arrayDecodedKey,
-                        auth.currentUser?.email.toString()
-                    ) { decryptedKey ->
-                        // Utwórz SecretKeySpec na podstawie odszyfrowanego klucza
-
-//                        Log.d("NFC1234", "Len of decrypted key: ${decryptedKey.size}")
-//                        val originalKey = SecretKeySpec(decryptedKey, "AES")
-//
-////                        val decodedData = file.encryptedByteArray
-////                        var originalKey = SecretKeySpec(decodedKey, 0, decodedKey.size, "AES")
-//                        val decodedData = file.encryptedByteArray
-//                        val decodedIV = Base64.getDecoder().decode(file.iV)
-//
-//
-//
-//
-//                        Log.d("NFC1234", "Len of encrypted data: ${file.encryptedByteArray.size}")
-//                        Log.d(
-//                            "NFC1234",
-//                            "First ten bytes of encrypted data: ${file.encryptedByteArray.take(10)}"
-//                        )
-//                        Log.d("NFC1234", "IV LEN ${file.iV.length} ")
-//                        Log.d("NFC1234", "IV = ${file.iV}")
-//                        Log.d("NFC1234", "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
-//
-//                        //tutaj muszisz poinformować o tym ze plik zostal odszyfrowany moze callback
-//                        val decryptedData =
-//                            securityManager.decryptDataAES(decodedData, originalKey, decodedIV)
-//
-//
-//                        file.byteArray = decryptedData
-//
-//
-//                        val tmpFile = FileManager.byteArrayToFile(context, file.byteArray, file.name)
-//                        FileManager.deleteFile(file, context)
-//
-//
-//                        if (tmpFile.name.isNotEmpty()) {
-//                            //zastanow sie co tu masz nadpisaiwac
-//                            file.name = tmpFile.name
-//                            file.uri = tmpFile.uri
-//                            file.type = tmpFile.type
-//                            file.size = file.size
-//
-//                        }
-//
-//                        file.encryptionState = false
-//                        val endTime = System.currentTimeMillis()
-//                        val duration = endTime - startTime
-//                        Log.d("NFC1234", "Czas operacji deszyfrowania: $duration ms")
-
-
-                    }
-                    // Jeśli długość klucza nie pasuje, odszyfruj klucz algorytmem RSA
-//                    securityManager.getPrivateKey(context,auth.currentUser?.email.toString())?.let {
-//                        securityManager.decryptDataRSA(
-//                            decodedKey,
-//                            it
-//                        ) { decryptedKey ->
-//                            // Utwórz SecretKeySpec na podstawie odszyfrowanego klucza
-//                //                        val originalKey = SecretKeySpec(decryptedKey, "AES")
-//                            Log.d("NFC1234", "Len of decrypted key: ${decryptedKey.size}")
-//
-//                        }
-//                    }
-                }
-
-                var originalKey = SecretKeySpec(decodedKey, 0, decodedKey.size, "AES")
-                val decodedData = file.encryptedByteArray
-                val decodedIV = Base64.getDecoder().decode(file.iV)
-
-
-
-
-                Log.d(TAG, "Len of encrypted data: ${file.encryptedByteArray.size}")
-                Log.d(TAG, "First ten bytes of encrypted data: ${file.encryptedByteArray.take(10)}")
-                Log.d(TAG, "IV LEN ${file.iV.length} ")
                 Log.d(TAG, "IV = ${file.iV}")
                 Log.d(TAG, "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
 
-                //tutaj muszisz poinformować o tym ze plik zostal odszyfrowany moze callback
-                val decryptedData =
-                    securityManager.decryptDataAES(decodedData, originalKey, decodedIV)
 
+                _uiState.update { it.copy(publicKey = "") }
 
-                file.byteArray = decryptedData
-
-
-                val tmpFile = FileManager.byteArrayToFile(context, file.byteArray, file.name)
-                FileManager.deleteFile(file, context)
-
-
-                if (tmpFile.name.isNotEmpty()) {
-                    //zastanow sie co tu masz nadpisaiwac
-                    file.name = tmpFile.name
-                    file.uri = tmpFile.uri
-                    file.type = tmpFile.type
-                    file.size = file.size
-
+                if (_uiState.value.publicKey.isNotEmpty()) {
+                    Log.d(TAG, "Public key: ${_uiState.value.publicKey}")
+                } else {
+                    Log.d(TAG, "Public key is empty")
                 }
 
                 file.encryptionState = false
                 val endTime = System.currentTimeMillis()
                 val duration = endTime - startTime
-                Log.d("NFC1234", "Czas operacji deszyfrowania: $duration ms")
+                Log.d(TAG, "The duration of the encryption operation.: $duration ms")
+
+            } else if (reading && file.encryptedByteArray.isNotEmpty()) {
+
+                val startTime = System.currentTimeMillis()
+
+                file.encryptionState = true
 
 
+                var decodedKey = Base64.getDecoder().decode(file.secretKey)
+                Log.d(TAG, "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
+
+
+
+                if (decodedKey.size == 256) {
+                    securityManager.decryptDataRSA(
+                        decodedKey,
+                        cloudComm.getAuthInstance().currentUser?.email.toString()
+                    ) { decryptedKey ->
+                        decodedKey = decryptedKey
+                    }
+                }
+
+                if (decodedKey.size == 32) {
+
+                    val originalKey = SecretKeySpec(decodedKey, 0, decodedKey.size, "AES")
+                    val decodedData = file.encryptedByteArray
+                    val decodedIV = Base64.getDecoder().decode(file.iV)
+                    Log.d(TAG, "Key is not encrypted")
+
+                    Log.d(TAG, "Len of encrypted data: ${file.encryptedByteArray.size}")
+                    Log.d(
+                        TAG,
+                        "First ten bytes of encrypted data: ${file.encryptedByteArray.take(10)}"
+                    )
+                    Log.d(TAG, "IV LEN ${file.iV.length} ")
+                    Log.d(TAG, "IV = ${file.iV}")
+                    Log.d(TAG, "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
+
+
+                    val decryptedData =
+                        securityManager.decryptDataAES(decodedData, originalKey, decodedIV)
+
+
+                    file.byteArray = decryptedData
+
+
+                    val tmpFile = FileManager.byteArrayToFile(context, file.byteArray, file.name)
+                    FileManager.deleteFile(file, context)
+
+
+                    if (tmpFile.name.isNotEmpty()) {
+                        file.name = tmpFile.name
+                        file.uri = tmpFile.uri
+                        file.type = tmpFile.type
+                        file.size = file.size
+
+                    }
+
+                    file.encryptionState = false
+                    val endTime = System.currentTimeMillis()
+                    val duration = endTime - startTime
+                    Log.d(TAG, "Decryption operation time: $duration ms")
+
+                } else {
+                    Log.d(TAG, "Invalid key $decodedKey")
+                }
             }
         }
     }
 
 
-    private val _uploadComplete = MutableStateFlow(false)
-    val uploadComplete = _uploadComplete.asStateFlow()
-
     fun pushFileIntoCloud(file: File, cipher: Boolean) {
 
         viewModelScope.launch {
 
-            Log.d(TAG, "Plik ${file.name}: ${file.byteArray.size} bajtów")
+            Log.d(TAG, "File ${file.name}: ${file.byteArray.size} bytes")
+            file.isUploading = true
             cloudComm.uploadFile(file, cipher, onUrlAvailable = { url ->
-                if (cipher) {
-                    _activeURL.value =
-                        (file.downloadLink + R.string.separator + file.secretKey + R.string.separator + file.iV + R.string.separator)
+                val newNdefMessage = if (cipher) {
+                    "$url${R.string.separator}${file.secretKey}${R.string.separator}${file.iV}${R.string.separator}"
                 } else {
-                    _activeURL.value = url
+                    url
                 }
-                _uploadComplete.value = true
+
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        ndefMessage = newNdefMessage,
+                        uploadComplete = true
+                    )
+                }
                 file.isUploading = false
+                markFileAsUploaded(file)
             })
 
         }
     }
 
     fun setNdefMessage(ndefMessage: String) {
-        _activeURL.value = ndefMessage
+        _uiState.update { it.copy(ndefMessage = R.string.separator.toString() + ndefMessage + R.string.separator.toString()) }
     }
 
 
     fun deleteReceivedFile(file: File) {
         viewModelScope.launch {
             FileManager.deleteFile(file, context)
-            _receivesFiles.update { currentFiles ->
-                currentFiles.filter { it != file }
+
+            _uiState.update { currentState ->
+                val updatedFiles = currentState.receivesFiles.filter { it != file }
+                currentState.copy(receivesFiles = updatedFiles)
             }
         }
     }
+
 
     fun deleteSelectedFile(file: File) {
         viewModelScope.launch {
-            //delete from cloud
+
             if (file.url != URL("https://www.google.com")) {
                 cloudComm.deleteFile(file)
             }
-            // FileManager.deleteFile(file, context)
-            _modelSelectedFiles.update { currentFiles ->
-                currentFiles.filter { it != file }
+
+            _uiState.update { currentState ->
+                val updatedFiles = currentState.modelSelectedFiles.filter { it != file }
+                currentState.copy(modelSelectedFiles = updatedFiles)
             }
         }
     }
 
+
     fun resetUploadComplete() {
-        _uploadComplete.value = false
+        _uiState.update { it.copy(uploadComplete = false) }
     }
 
     fun reauthenticateAndDelete(password: String, onResult: (Boolean) -> Unit) {
         val credential =
-            EmailAuthProvider.getCredential(auth.currentUser?.email.toString(), password)
-        auth.currentUser?.reauthenticate(credential)
+            EmailAuthProvider.getCredential(
+                cloudComm.getAuthInstance().currentUser?.email.toString(),
+                password
+            )
+        cloudComm.getAuthInstance().currentUser?.reauthenticate(credential)
             ?.addOnCompleteListener { reauthTask ->
                 if (reauthTask.isSuccessful) {
                     Log.d(TAG, "Re-authentication successful")
@@ -869,7 +822,7 @@ class MainViewModel(
 
     private fun deleteAccount() {
 
-        auth.currentUser?.delete()?.addOnCompleteListener { task ->
+        cloudComm.getAuthInstance().currentUser?.delete()?.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 Log.d(TAG, "deleteAccount:success")
             } else if (task.exception is FirebaseAuthRecentLoginRequiredException) {
@@ -891,100 +844,141 @@ class MainViewModel(
                     }
                 },
                 onError = { exception ->
-                    Log.e(TAG, "Błąd pobierania listy plików: $exception")
+                    Log.d(TAG, "Error while fetching files: $exception")
                 }
             )
         }
     }
 
     private fun addFileToList(newFile: File) {
-        val currentList = _modelSelectedFiles.value.toMutableList()
-        if (currentList.any { it.name == newFile.name && it.url.toString() == newFile.url.toString() }) {
-            Log.d(TAG, "Plik już istnieje w liście: ${newFile.name}")
-        } else {
-            currentList.add(newFile)
-            _modelSelectedFiles.value = currentList
+        _uiState.update { currentState ->
+            val currentList = currentState.modelSelectedFiles.toMutableList()
+
+            if (currentList.any { it.name == newFile.name && it.url.toString() == newFile.url.toString() }) {
+                Log.d(TAG, "File already exists in the list: ${newFile.name}")
+                currentState
+            } else {
+                currentList.add(newFile)
+                currentState.copy(modelSelectedFiles = currentList)
+            }
         }
     }
 
     fun filterSelectedFilesSize(value: ClosedFloatingPointRange<Float>) {
-        _filteredSelectedFiles.value = _modelSelectedFiles.value.filter { file ->
-            file.size in value
+        _uiState.update { currentState ->
+            val filteredFiles = currentState.modelSelectedFiles.filter { file ->
+                file.size in value
+            }
+            currentState.copy(filteredSelectedFiles = filteredFiles)
         }
     }
 
     fun checkKey() {
-        //sprawdzam czy klucze dla aliasu auth. sa w keystore
-        securityManager.checkKey(auth.currentUser?.email.toString())
-
+        securityManager.checkKey(cloudComm.getAuthInstance().currentUser?.email.toString())
     }
 
     fun toggleEncryption() {
-        _additionalEncryption.value = !_additionalEncryption.value
+        _uiState.update { currentState ->
+            currentState.copy(additionalEncryption = !currentState.additionalEncryption)
+        }
     }
+
 
     fun getPublicKey(): String {
-        return securityManager.getPublicKey(auth.currentUser?.email.toString())
+        return securityManager.getPublicKey(cloudComm.getAuthInstance().currentUser?.email.toString())
 
     }
 
-    fun encryptDataRSA(data: ByteArray, publicKey: String, callback: (ByteArray) -> Unit) {
+
+    private fun encryptDataRSA(data: ByteArray, publicKey: String, callback: (ByteArray) -> Unit) {
         securityManager.encryptDataRSA(data, publicKey) { encryptedData ->
-            // Wywołaj funkcję zwrotną z zaszyfrowanymi danymi
             callback(encryptedData)
         }
     }
 
     fun toggleMirroring() {
-        _cloudMirroring.value = !_cloudMirroring.value
-    }
-
-    fun validatePublicKey(pkey: String): Boolean {
-        return securityManager.validatePublicKey(pkey)
-    }
-
-    fun updateActiveURL(file: File) {
-        _activeURL.value =
-            file.downloadLink + R.string.separator + file.secretKey + R.string.separator + file.iV + R.string.separator
-    }
-
-    fun addReceivedFile(downloadedFile: File) {
-        viewModelScope.launch {
-            _receivesFiles.update { currentFiles ->
-                // Sprawdzanie czy lista zawiera już plik o takiej samej nazwie
-                if (currentFiles.any { it == downloadedFile }) {
-                    // Jeśli tak, zwracamy aktualną listę bez zmian
-                    currentFiles
-                } else {
-                    // Jeśli nie, dodajemy nowy plik do listy
-                    currentFiles + downloadedFile
-                }
-            }
+        _uiState.update { currentState ->
+            currentState.copy(cloudMirroring = !currentState.cloudMirroring)
         }
     }
+
+
+    private fun validatePublicKey(publicKey: String): Boolean {
+        return securityManager.validatePublicKey(publicKey)
+    }
+
 
     fun checkInternetStatus(context: Context) {
         val connectivityManager =
             context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val activeNetwork = connectivityManager.activeNetworkInfo
-        if (activeNetwork?.isConnectedOrConnecting == true) {
-            _internetConnStatus.value = InternetConnectionStatus.CONNECTED
-        } else {
-            _internetConnStatus.value = InternetConnectionStatus.DISCONNECTED
-        }
+        val isConnected = activeNetwork?.isConnectedOrConnecting == true
+
+        _uiState.update { it.copy(internetConnStatus = if (isConnected) InternetConnectionStatus.CONNECTED else InternetConnectionStatus.DISCONNECTED) }
+
     }
 
 
-   fun processNFCData(response: ByteArray?) {
+    fun processNFCData(response: ByteArray?) {
 
         if (response != null) {
             val payloadString = response.toString(Charsets.UTF_8)
+            Log.d(TAG, "Read NFC data: $payloadString")
+
             viewModelScope.launch {
-                downloadFile(payloadString, receivesFiles = true)
+                if (payloadString.contains("https")) {
+                    val url = "https" + payloadString.substringAfter("https")
+                    downloadFile(url, receivesFiles = true)
+                } else {
+                    try {
+                        val parts = payloadString.split(R.string.separator.toString())
+                        val newPublicKey = parts[1]
+                        if (validatePublicKey(newPublicKey)) {
+                            Log.d(TAG, "Valid public key detected")
+                            _uiState.update {
+                                it.copy(
+                                    publicKey = newPublicKey,
+                                    publicKeyOwner = parts[2]
+                                )
+                            }
+                        } else {
+                            Log.d(TAG, "Invalid public key")
+                        }
+
+                        Log.d(TAG, "Public key: ${parts[1]}")
+                        Log.d(TAG, "Public key owner: ${parts[2]}")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error while processing NFC data: $e")
+                    }
+                }
             }
         }
 
+    }
 
+    fun cipherSessionKey(file: File) {
+
+        val sessionKey = file.secretKey
+        val publicKey = uiState.value.publicKey
+
+
+        val sessionKeyByteArray = Base64.getDecoder().decode(sessionKey)
+
+
+        if (sessionKey.isNotEmpty() && publicKey.isNotEmpty()) {
+            viewModelScope.launch {
+                encryptDataRSA(sessionKeyByteArray, publicKey) { encryptedData ->
+                    val encryptedSessionKey = Base64.getEncoder().encodeToString(encryptedData)
+//                    Log.d(TAG, "Encrypted session key: $encryptedSessionKey")
+                    file.secretKey = encryptedSessionKey
+
+                    val newMSG =
+                        (file.url.toString() + R.string.separator + encryptedSessionKey + R.string.separator + file.iV)
+                    Log.d(TAG, newMSG)
+                    setNdefMessage(newMSG)
+                }
+            }
+        }
 
     }
 

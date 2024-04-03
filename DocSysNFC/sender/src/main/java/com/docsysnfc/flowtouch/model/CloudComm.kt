@@ -11,254 +11,25 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
+import com.docsysnfc.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import java.io.IOException
 import java.net.URL
 
-interface UrlCallback {
-    fun onUrlAvailable(url: String)
-}
 
-val TAG = "NFC123"
+const val TAG = "NFC123"
 
 class CloudComm(
     private val firebaseStorage: FirebaseStorage = FirebaseStorage.getInstance()
 ) {
 
-
     private val auth = FirebaseAuth.getInstance()
 
 
-    suspend fun downloadFile(
-        downloadDirectory: String = "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc",
-        downloadLink: String,
-        context: Context,
-        callback: (Uri?, String) -> Unit
-    ) {
-        val fileName = downloadLink.substringAfterLast('/')
-        val destinationFile =
-            java.io.File(context.getExternalFilesDir(null), "$downloadDirectory/$fileName")
-
-        // Sprawdzenie istnienia pliku
-        if (destinationFile.exists()) {
-            Log.d(TAG, "Plik już istnieje: ${destinationFile.absolutePath}")
-            callback(
-                Uri.fromFile(destinationFile),
-                "Plik już istnieje: ${destinationFile.absolutePath}"
-            )
-            return
-        }
-
-        //prepare downloadlink
-        val httpsIndex = downloadLink.indexOf("https")
-
-        val link = downloadLink.substring(httpsIndex)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Kod dla Android 10 (API 29) lub nowszego
-            downloadFileForQAndAbove(downloadDirectory, link, context, callback)
-        } else {
-            // Kod dla starszych wersji Androida
-            downloadFileForPreQ(downloadDirectory, link, context, callback)
-        }
+    fun getAuthInstance(): FirebaseAuth {
+        return auth
     }
-
-
-    private fun downloadFileForPreQ(
-        directory: String,
-        link: String,
-        context: Context,
-        callback: (Uri?, String) -> Unit
-    ) {
-
-        // Uzyskanie referencji do pliku w Firebase Storage
-        val storageRef = firebaseStorage.getReferenceFromUrl(link)
-        Log.d(TAG, "storageRef: $storageRef")
-
-
-        // Obsługa metadanych
-        storageRef.metadata.addOnSuccessListener { metadata ->
-            Log.d(TAG, "metadata: $metadata")
-
-            // Tworzenie pliku w katalogu "Downloads"
-            val folderName =
-                Environment.DIRECTORY_DOWNLOADS // Użycie publicznego katalogu "Downloads"
-            val fileName = metadata.name ?: "unknown"
-            val mimeType = metadata.contentType ?: "application/octet-stream"
-
-            // Sprawdzenie uprawnień do zapisu
-            if (ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                )
-                == PackageManager.PERMISSION_GRANTED
-            ) {
-
-                // Tworzenie pliku lokalnego
-                val downloadsFolder =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val docSysNfcFolder = java.io.File(downloadsFolder, "DocSysNFC")
-
-                // Sprawdzenie czy katalog istnieje, jeśli nie - próba utworzenia
-                if (!docSysNfcFolder.exists()) {
-                    docSysNfcFolder.mkdirs()
-                }
-
-                var localFile = java.io.File(
-                    docSysNfcFolder,
-                    fileName + FileManager.getExtensionFromMimeType(mimeType)
-                )
-
-                // Dodanie logiki zapobiegającej nadpisywaniu istniejących plików
-                var counter = 1
-                val originalName = localFile.nameWithoutExtension
-                val extension = localFile.extension
-
-                while (localFile.exists()) {
-                    // Modyfikacja nazwy pliku, dodając sufiks z numerem
-                    val newName = "$originalName($counter).$extension"
-                    localFile = java.io.File(downloadsFolder, newName)
-                    counter++
-                }
-
-
-                // Pobieranie pliku
-                storageRef.getFile(localFile).addOnSuccessListener {
-                    Log.d(TAG, "Plik został pomyślnie pobrany: ${localFile.absolutePath}")
-                    // Przekazanie Uri do pobranego pliku
-                    callback(Uri.fromFile(localFile), mimeType)
-                }.addOnFailureListener { exception ->
-                    Log.e(TAG, "Błąd pobierania pliku: $exception")
-                    callback(null, "")
-                }
-            } else {
-                // Obsługa przypadku, gdy nie ma uprawnień
-                Log.e(TAG, "Brak uprawnień do zapisu w katalogu Downloads")
-                callback(null, "")
-            }
-
-        }.addOnFailureListener {
-            Log.e(TAG, "Błąd pobierania metadanych: $it")
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun downloadFileForQAndAbove(
-        directory: String,
-        link: String,
-        context: Context,
-        callback: (Uri?, String) -> Unit
-    ) {
-
-
-        // Logowanie URL
-
-
-        // Uzyskanie referencji do pliku w Firebase Storage
-        val storageRef = firebaseStorage.getReferenceFromUrl(link)
-        Log.d(TAG, "storageRef: $storageRef")
-
-        // Obsługa metadanych
-        storageRef.metadata.addOnSuccessListener { metadata ->
-            Log.d(TAG, "metadata: $metadata")
-
-            val fileName = metadata.name ?: "unknown"
-            val mimeType = metadata.contentType ?: "application/octet-stream"
-
-
-            // Sprawdzenie, czy plik o takiej nazwie już istnieje i modyfikacja nazwy
-            var newFileName = fileName
-            var fileExists =
-                checkIfFileExists(context, Environment.DIRECTORY_DOWNLOADS, newFileName, mimeType)
-            var counter = 1
-            while (fileExists) {
-                // Dodanie numeru do nazwy pliku
-                newFileName = "${fileName}_${counter++}"
-                fileExists = checkIfFileExists(
-                    context,
-                    Environment.DIRECTORY_DOWNLOADS,
-                    newFileName,
-                    mimeType
-                )
-            }
-
-
-            val contentResolver = context.contentResolver
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                put(
-                    MediaStore.MediaColumns.RELATIVE_PATH,
-                    "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc"
-                )
-            }
-
-            try {
-                // Utworzenie Uri wewnętrznego z użyciem MediaStore
-                val fileUri = contentResolver.insert(
-                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                    contentValues
-                )
-                fileUri?.let { uri ->
-                    // Otworzenie strumienia danych wyjściowych
-                    val outputStream = contentResolver.openOutputStream(uri)
-                    if (outputStream != null) {
-                        // Pobieranie strumienia z obiektu StorageReference
-                        storageRef.stream.addOnSuccessListener { stream ->
-                            try {
-                                stream.stream.copyTo(outputStream)
-                                outputStream.close() // Zamknięcie strumienia po zakończeniu zapisu
-                                Log.d(TAG, "Plik został pomyślnie pobrany: ${uri}")
-                                // Przekazanie Uri do pobranego pliku
-                                callback(uri, mimeType)
-                            } catch (e: IOException) {
-                                Log.e(TAG, "Błąd przy zapisie danych do strumienia: $e")
-                                callback(null, "")
-                            }
-                        }.addOnFailureListener { exception ->
-                            Log.e(TAG, "Błąd pobierania pliku: $exception")
-                            callback(null, "")
-                        }
-                    } else {
-                        Log.e(TAG, "Nie można otworzyć OutputStream")
-                        callback(null, "")
-                    }
-                } ?: run {
-                    Log.e(TAG, "Nie można utworzyć pliku w MediaStore")
-                    callback(null, "")
-                }
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Błąd przy tworzeniu pliku w MediaStore: $e")
-                callback(null, "")
-            }
-        }.addOnFailureListener {
-            Log.e(TAG, "Błąd pobierania metadanych: $it")
-        }
-    }
-
-    private fun checkIfFileExists(
-        context: Context,
-        directory: String,
-        fileName: String,
-        mimeType: String
-    ): Boolean {
-        val contentResolver = context.contentResolver
-        val projection = arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)
-        val selection =
-            "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.MIME_TYPE} = ?"
-        val selectionArgs = arrayOf(fileName, mimeType)
-        val queryUri = MediaStore.Files.getContentUri("external")
-
-        contentResolver.query(queryUri, projection, selection, selectionArgs, null)?.use { cursor ->
-            if (cursor.count > 0) {
-                return true
-            }
-        }
-        return false
-    }
-
 
     fun uploadFile(
         selectedFile: File?,
@@ -275,7 +46,7 @@ class CloudComm(
             return
         }
 
-        // Dodanie unikalnego identyfikatora do nazwy pliku
+
         val uniqueID = System.currentTimeMillis().toString()
         val fileName = if (selectedFile?.name?.contains(".") == true) {
             val namePart = selectedFile.name.substringBeforeLast(".")
@@ -289,32 +60,32 @@ class CloudComm(
             firebaseStorage.reference.child("files/${auth.currentUser!!.uid}/$fileName")
 
         val byteArray = if (cipher) selectedFile?.encryptedByteArray else null
-        byteArray?.let {
+        byteArray?.let { it ->
             if (it.isNotEmpty()) {
                 fileRef.putBytes(it).addOnSuccessListener {
-                    // Po udanym przesłaniu pliku, pobierz jego URL
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         val downloadUrl = uri.toString()
                         selectedFile?.url = URL(downloadUrl)
                         onUrlAvailable(downloadUrl)
                     }.addOnFailureListener { exception ->
-                        Log.d("TAG123", "onCreatexd: $exception")
+                        Log.d(TAG, "Upload failure: $exception")
                         onUrlAvailable("Error: $exception")
                     }
                 }.addOnFailureListener {
-                    Log.d("TAG123", "Upload failure: $it")
+                    Log.d(TAG, "Upload failure: $it")
                     onUrlAvailable("Error: Upload failure: $it")
                     if (selectedFile != null) {
                         selectedFile.isUploading = false
                     }
                 }
             } else {
-                Log.d("TAG123", "ByteArray is empty, file not uploaded")
+                Log.d(TAG, "ByteArray is empty, file not uploaded")
                 onUrlAvailable("Error: ByteArray is empty")
                 if (selectedFile != null) {
                     selectedFile.isUploading = false
                 } else {
-
+                    Log.d(TAG, "Selected file is null")
+                    onUrlAvailable("Error: Selected file is null")
                 }
             }
         } ?: run {
@@ -363,7 +134,7 @@ class CloudComm(
 
     fun getFilesList(onResult: (List<File>) -> Unit, onError: (Exception) -> Unit) {
         if (auth.currentUser == null) {
-            Log.d(TAG, "onCreate: ${auth.currentUser}")
+            Log.d(TAG, "User is null: ${auth.currentUser}")
             return
         }
         val fileRef = firebaseStorage.reference.child("files/${auth.currentUser!!.uid}")
@@ -374,7 +145,7 @@ class CloudComm(
                 var processedCount = 0
 
                 if (itemCount == 0) {
-                    onResult(files) // Jeśli nie ma plików, zwróć pustą listę.
+                    onResult(files)
                 } else {
                     listResult.items.forEach { storageReference ->
                         storageReference.metadata.addOnSuccessListener { metadata ->
@@ -388,16 +159,16 @@ class CloudComm(
                                 if (processedCount == itemCount) {
                                     onResult(files)
                                 }
-                            }.addOnFailureListener { exception ->
+                            }.addOnFailureListener {
                                 processedCount++
                                 if (processedCount == itemCount) {
-                                    onResult(files) // Zwraca listę nawet jeśli niektóre pliki nie powiodły się.
+                                    onResult(files)
                                 }
                             }
-                        }.addOnFailureListener { exception ->
+                        }.addOnFailureListener {
                             processedCount++
                             if (processedCount == itemCount) {
-                                onResult(files) // Zwraca listę nawet jeśli niektóre pliki nie powiodły się.
+                                onResult(files)
                             }
                         }
                     }
@@ -407,6 +178,224 @@ class CloudComm(
                 onError(exception)
             }
     }
+
+    fun downloadFile(
+        downloadDirectory: String = "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc",
+        downloadLink: String,
+        context: Context,
+        callback: (Uri?, String) -> Unit
+    ) {
+        val fileName = downloadLink.substringAfterLast('/')
+        val destinationFile =
+            java.io.File(context.getExternalFilesDir(null), "$downloadDirectory/$fileName")
+
+        if (destinationFile.exists()) {
+            Log.d(TAG, "File already exists: ${destinationFile.absolutePath}")
+            callback(
+                Uri.fromFile(destinationFile),
+                "${context.getString(R.string.file_exist)}: ${destinationFile.absolutePath}"
+            )
+            return
+        }
+
+
+        val httpsIndex = downloadLink.indexOf("https")
+
+        try {
+            val link = downloadLink.substring(httpsIndex)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                downloadFileForQAndAbove(downloadDirectory, link, context, callback)
+            } else {
+                downloadFileForPreQ(downloadDirectory, link, context, callback)
+            }
+        }catch (e: Exception){
+            Log.d(TAG, "Error: $e")
+            callback(null, "Error: $e")
+        }
+    }
+
+
+    private fun downloadFileForPreQ(
+        directory: String,
+        link: String,
+        context: Context,
+        callback: (Uri?, String) -> Unit
+    ) {
+
+        val storageRef = firebaseStorage.getReferenceFromUrl(link)
+        Log.d(TAG, "storageRef: $storageRef")
+
+
+
+        storageRef.metadata.addOnSuccessListener { metadata ->
+            Log.d(TAG, "metadata: $metadata")
+
+            val folderName =
+                Environment.DIRECTORY_DOWNLOADS
+            val fileName = metadata.name ?: "unknown"
+            val mimeType = metadata.contentType ?: "application/octet-stream"
+
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                )
+                == PackageManager.PERMISSION_GRANTED
+            ) {
+
+                val downloadsFolder =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val docSysNfcFolder = java.io.File(downloadsFolder, "DocSysNFC")
+
+
+                if (!docSysNfcFolder.exists()) {
+                    docSysNfcFolder.mkdirs()
+                }
+
+                var localFile = java.io.File(
+                    docSysNfcFolder,
+                    fileName + FileManager.getExtensionFromMimeType(mimeType)
+                )
+
+                var counter = 1
+                val originalName = localFile.nameWithoutExtension
+                val extension = localFile.extension
+
+                while (localFile.exists()) {
+                    val newName = "$originalName($counter).$extension"
+                    localFile = java.io.File(downloadsFolder, newName)
+                    counter++
+                }
+
+
+
+                storageRef.getFile(localFile).addOnSuccessListener {
+                    Log.d(TAG, "File successfully downloaded: ${localFile.absolutePath}")
+                    // Passing the Uri of the downloaded file
+                    callback(Uri.fromFile(localFile), mimeType)
+                }.addOnFailureListener { exception ->
+                    Log.e(TAG, "Error downloading file: $exception")
+                    callback(null, "")
+                }
+
+            } else {
+                Log.e(TAG, "No write permissions for the Downloads directory")
+                callback(null, "")
+            }
+
+        }.addOnFailureListener {
+            Log.e(TAG, "Error downloading metadata: $it")
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun downloadFileForQAndAbove(
+        directory: String,
+        link: String,
+        context: Context,
+        callback: (Uri?, String) -> Unit
+    ) {
+        val storageRef = firebaseStorage.getReferenceFromUrl(link)
+        Log.d(TAG, "StorageRef: $storageRef")
+
+
+        storageRef.metadata.addOnSuccessListener { metadata ->
+
+            val fileName = metadata.name ?: "unknown"
+            val mimeType = metadata.contentType ?: "application/octet-stream"
+
+
+
+            var newFileName = fileName
+            var fileExists =
+                checkIfFileExists(context, Environment.DIRECTORY_DOWNLOADS, newFileName, mimeType)
+            var counter = 1
+            while (fileExists) {
+                newFileName = "${fileName}_${counter++}"
+                fileExists = checkIfFileExists(
+                    context,
+                    Environment.DIRECTORY_DOWNLOADS,
+                    newFileName,
+                    mimeType
+                )
+            }
+
+
+            val contentResolver = context.contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                put(
+                    MediaStore.MediaColumns.RELATIVE_PATH,
+                    "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc"
+                )
+            }
+
+            try {
+                val fileUri = contentResolver.insert(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    contentValues
+                )
+                fileUri?.let { uri ->
+                    // Opening output data stream
+                    val outputStream = contentResolver.openOutputStream(uri)
+                    if (outputStream != null) {
+                        // Retrieving stream from StorageReference object
+                        storageRef.stream.addOnSuccessListener { stream ->
+                            try {
+                                stream.stream.copyTo(outputStream)
+                                outputStream.close() // Closing the stream after writing is complete
+                                Log.d(TAG, "File successfully downloaded: $uri")
+                                // Passing the Uri of the downloaded file
+                                callback(uri, mimeType)
+                            } catch (e: IOException) {
+                                Log.e(TAG, "Error while writing data to the stream: $e")
+                                callback(null, "")
+                            }
+                        }.addOnFailureListener { exception ->
+                            Log.e(TAG, "Error downloading file: $exception")
+                            callback(null, "")
+                        }
+                    } else {
+                        Log.e(TAG, "Cannot open OutputStream")
+                        callback(null, "")
+                    }
+                } ?: run {
+                    Log.e(TAG, "Unable to create file in MediaStore")
+                    callback(null, "")
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating file in MediaStore: $e")
+                callback(null, "")
+            }
+        }
+
+    }
+
+
+
+    private fun checkIfFileExists(
+        context: Context,
+        directory: String,
+        fileName: String,
+        mimeType: String
+    ): Boolean {
+        val contentResolver = context.contentResolver
+        val projection = arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)
+        val selection =
+            "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.MIME_TYPE} = ?"
+        val selectionArgs = arrayOf(fileName, mimeType)
+        val queryUri = MediaStore.Files.getContentUri("external")
+
+        contentResolver.query(queryUri, projection, selection, selectionArgs, null)?.use { cursor ->
+            if (cursor.count > 0) {
+                return true
+            }
+        }
+        return false
+    }
+
 
 
 }

@@ -17,105 +17,61 @@ import java.io.UnsupportedEncodingException
 import java.math.BigInteger
 
 
-class NFCComm(
-) : HostApduService() {
+class NFCComm
+    : HostApduService() {
 
 
-    private val vibrationEffect: VibrationEffect = VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE)
+    private val vibrationEffect: VibrationEffect =
+        VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE)
 
     private val TAG = "NFC123"
 
     private var nfcAdapter: NfcAdapter? = null
     private var vibrator: Vibrator? = null
 
-    private val APDU_SELECT = byteArrayOf(
-        0x00.toByte(), // CLA	- Class - Class of instruction
-        0xA4.toByte(), // INS	- Instruction - Instruction code
-        0x04.toByte(), // P1	- Parameter 1 - Instruction parameter 1
-        0x00.toByte(), // P2	- Parameter 2 - Instruction parameter 2
-        0x07.toByte(), // Lc field	- Number of bytes present in the data field of the command
-        0xD2.toByte(),
-        0x76.toByte(),
-        0x00.toByte(),
-        0x00.toByte(),
-        0x85.toByte(),
-        0x01.toByte(),
-        0x01.toByte(), // NDEF Tag Application name
-        0x00.toByte(), // Le field	- Maximum number of bytes expected in the data field of the response to the command
-    )
+    //move this command to other file
 
-    private val CAPABILITY_CONTAINER_OK = byteArrayOf(
-        0x00.toByte(), // CLA	- Class - Class of instruction
-        0xa4.toByte(), // INS	- Instruction - Instruction code
-        0x00.toByte(), // P1	- Parameter 1 - Instruction parameter 1
-        0x0c.toByte(), // P2	- Parameter 2 - Instruction parameter 2
-        0x02.toByte(), // Lc field	- Number of bytes present in the data field of the command
-        0xe1.toByte(),
-        0x03.toByte(), // file identifier of the CC file
-    )
+    private val applicationSelect = listOf(
+        0x00, 0xA4, 0x04, 0x00, 0x07, 0xD2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x01, 0x00
+    ).map { it.toByte() }.toByteArray()
 
-    private val READ_CAPABILITY_CONTAINER = byteArrayOf(
-        0x00.toByte(), // CLA	- Class - Class of instruction
-        0xb0.toByte(), // INS	- Instruction - Instruction code
-        0x00.toByte(), // P1	- Parameter 1 - Instruction parameter 1
-        0x00.toByte(), // P2	- Parameter 2 - Instruction parameter 2
-        0x0f.toByte(), // Lc field	- Number of bytes present in the data field of the command
-    )
+    private val capabilityContainerSelect = listOf(
+        0x00, 0xa4, 0x00, 0x0c, 0x02, 0xe1, 0x03
+    ).map { it.toByte() }.toByteArray()
 
-    // In the scenario that we have done a CC read, the same byte[] match?
-    // for ReadBinary would trigger and we don't want that in succession
-    private var READ_CAPABILITY_CONTAINER_CHECK = false
+    private val readBinaryFromCC = listOf(
+        0x00, 0xb0, 0x00, 0x00, 0x0f
+    ).map { it.toByte() }.toByteArray()
 
-    private val READ_CAPABILITY_CONTAINER_RESPONSE = byteArrayOf(
-        0x00.toByte(), 0x11.toByte(), // CCLEN length of the CC file
-        0x20.toByte(), // Mapping Version 2.0
-        0xFF.toByte(), 0xFF.toByte(), // MLe maximum
-        0xFF.toByte(), 0xFF.toByte(), // MLc maximum
-        0x04.toByte(), // T field of the NDEF File Control TLV
-        0x06.toByte(), // L field of the NDEF File Control TLV
-        0xE1.toByte(), 0x04.toByte(), // File Identifier of NDEF file
-        0xFF.toByte(), 0xFE.toByte(), // Maximum NDEF file size of 65534 bytes
-        0x00.toByte(), // Read access without any security
-        0xFF.toByte(), // Write access without any security
-        0x90.toByte(), 0x00.toByte(), // A_OKAY
-    )
+    private val responseReadBinaryFromCC = listOf(
+        0x00, 0x11, 0x20, 0xFF, 0xFF, 0xFF, 0xFF, 0x04, 0x06, 0xE1, 0x04, 0xFF, 0xFE, 0x00, 0xFF, 0x90, 0x00,
+    ).map { it.toByte() }.toByteArray()
 
-    private val NDEF_SELECT_OK = byteArrayOf(
-        0x00.toByte(), // CLA	- Class - Class of instruction
-        0xa4.toByte(), // Instruction byte (INS) for Select command
-        0x00.toByte(), // Parameter byte (P1), select by identifier
-        0x0c.toByte(), // Parameter byte (P1), select by identifier
-        0x02.toByte(), // Lc field	- Number of bytes present in the data field of the command
-        0xE1.toByte(),
-        0x04.toByte(), // file identifier of the NDEF file retrieved from the CC file
-    )
+    private val ndefSelect = listOf(
+        0x00, 0xa4, 0x00, 0x0c, 0x02, 0xE1, 0x04,
+    ).map { it.toByte() }.toByteArray()
 
-    private val NDEF_READ_BINARY = byteArrayOf(
-        0x00.toByte(), // Class byte (CLA)
-        0xb0.toByte(), // Instruction byte (INS) for ReadBinary command
-    )
+    private val ndefReadBinary = listOf(
+        0x00, 0xb0,
+    ).map { it.toByte() }.toByteArray()
 
-    private val NDEF_READ_BINARY_NLEN = byteArrayOf(
-        0x00.toByte(), // Class byte (CLA)
-        0xb0.toByte(), // Instruction byte (INS) for ReadBinary command
-        0x00.toByte(),
-        0x00.toByte(), // Parameter byte (P1, P2), offset inside the CC file
-        0x02.toByte(), // Le field
-    )
+    private val ndefReadBinaryLen = listOf(
+        0x00, 0xb0, 0x00, 0x00, 0x02,
+    ).map { it.toByte() }.toByteArray()
 
-    private val A_OKAY = byteArrayOf(
-        0x90.toByte(), // SW1	Status byte 1 - Command processing status
-        0x00.toByte(), // SW2	Status byte 2 - Command processing qualifier
-    )
+    private val okay = listOf(
+        0x90, 0x00,
+    ).map { it.toByte() }.toByteArray()
 
-    private val A_ERROR = byteArrayOf(
-        0x6A.toByte(), // SW1	Status byte 1 - Command processing status
-        0x82.toByte(), // SW2	Status byte 2 - Command processing qualifier
-    )
+    private val error = listOf(
+        0x6A, 0x82,
+    ).map { it.toByte() }.toByteArray()
+
+    private var ccContainerChecked = false
 
     private val NDEF_ID = byteArrayOf(0xE1.toByte(), 0x04.toByte())
 
-    private var NDEF_URI = NdefMessage(createNdefRecord("init message", NDEF_ID))
+    private var NDEF_URI = NdefMessage(createNdefRecord("Init message", NDEF_ID))
     private var NDEF_URI_BYTES = NDEF_URI.toByteArray()
     private var NDEF_URI_LEN = fillByteArrayToFixedDimension(
         BigInteger.valueOf(NDEF_URI_BYTES.size.toLong()).toByteArray(),
@@ -124,11 +80,9 @@ class NFCComm(
 
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-
-        //activity visible porownoac z gita
-
         if (intent?.hasExtra("ndefMessage")!!) {
-            NDEF_URI = NdefMessage(createNdefRecord(intent.getStringExtra("ndefMessage")!!, NDEF_ID))
+            NDEF_URI =
+                NdefMessage(createNdefRecord(intent.getStringExtra("ndefMessage")!!, NDEF_ID))
 
             NDEF_URI_BYTES = NDEF_URI.toByteArray()
             NDEF_URI_LEN = fillByteArrayToFixedDimension(
@@ -160,45 +114,57 @@ class NFCComm(
 //        }
 
         val response = when {
-            APDU_SELECT.contentEquals(commandApdu) -> {
 
-                Log.i(TAG, "APDU_SELECT triggered. Our Response: $A_OKAY")
-                A_OKAY
-            }
-
-            CAPABILITY_CONTAINER_OK.contentEquals(commandApdu) -> {
-//                Log.i(TAG, "CAPABILITY_CONTAINER_OK triggered. Our Response: " +  $A_OKAY.toString())
-                A_OKAY
-            }
-
-            READ_CAPABILITY_CONTAINER.contentEquals(commandApdu) && !READ_CAPABILITY_CONTAINER_CHECK -> {
+            applicationSelect.contentEquals(commandApdu) -> {
                 Log.i(
                     TAG,
-                    "READ_CAPABILITY_CONTAINER triggered. Our Response: " + READ_CAPABILITY_CONTAINER_RESPONSE.toHex()
+                    "receive command: ${commandApdu.contentToString()}\n response: ${okay.contentToString()}."
                 )
-                READ_CAPABILITY_CONTAINER_CHECK = true
-                READ_CAPABILITY_CONTAINER_RESPONSE
+                okay
             }
 
-            NDEF_SELECT_OK.contentEquals(commandApdu) -> {
-                Log.i(TAG, "NDEF_SELECT_OK triggered. Our Response: " + A_OKAY.toHex())
-                A_OKAY
+            capabilityContainerSelect.contentEquals(commandApdu) -> {
+                Log.i(
+                    TAG,
+                    "receive command: ${commandApdu.contentToString()}\n response: ${okay.contentToString()}"
+                )
+                okay
             }
 
-            NDEF_READ_BINARY_NLEN.contentEquals(commandApdu) -> {
-                val response = ByteArray(NDEF_URI_LEN.size + A_OKAY.size)
+            readBinaryFromCC.contentEquals(commandApdu) && !ccContainerChecked -> {
+                Log.i(
+                    TAG,
+                    "receive command: ${commandApdu.contentToString()}\n response: ${responseReadBinaryFromCC.contentToString()}"
+                )
+                ccContainerChecked = true
+                responseReadBinaryFromCC
+            }
+
+            ndefSelect.contentEquals(commandApdu) -> {
+                Log.i(
+                    TAG,
+                    "receive command: ${commandApdu.contentToString()}\n response: ${okay.contentToString()}"
+                )
+                okay
+            }
+
+            ndefReadBinaryLen.contentEquals(commandApdu) -> {
+                val response = ByteArray(NDEF_URI_LEN.size + okay.size)
                 System.arraycopy(NDEF_URI_LEN, 0, response, 0, NDEF_URI_LEN.size)
-                System.arraycopy(A_OKAY, 0, response, NDEF_URI_LEN.size, A_OKAY.size)
+                System.arraycopy(okay, 0, response, NDEF_URI_LEN.size, okay.size)
 
-                Log.i(TAG, "NDEF_READ_BINARY_NLEN triggered. Our Response: " + response.toHex())
+                Log.i(
+                    TAG, "receive command: ${commandApdu.contentToString()}\n" +
+                            " response:  ${response.contentToString()}}"
+                )
 
-                READ_CAPABILITY_CONTAINER_CHECK = false
+                ccContainerChecked = false
                 response
             }
 
-            commandApdu.sliceArray(0..1).contentEquals(NDEF_READ_BINARY) -> {
-                var offset = 0
-                var length = 1000
+            commandApdu.sliceArray(0..1).contentEquals(ndefReadBinary) -> {
+                var offset: Int
+                var length: Int
                 try {
                     offset = commandApdu.sliceArray(2..3).toHex().toInt(16)
                     length = commandApdu.sliceArray(4..4).toHex().toInt(16)
@@ -217,36 +183,35 @@ class NFCComm(
                 )
 
 
-
                 val slicedResponse = fullResponse.sliceArray(offset until fullResponse.size)
 
                 val realLength = if (slicedResponse.size <= length) slicedResponse.size else length
-                val response = ByteArray(realLength + A_OKAY.size)
+                val response = ByteArray(realLength + okay.size)
 
                 System.arraycopy(slicedResponse, 0, response, 0, realLength)
-                System.arraycopy(A_OKAY, 0, response, realLength, A_OKAY.size)
+                System.arraycopy(okay, 0, response, realLength, okay.size)
 
-                Log.i(TAG, "NDEF_READ_BINARY triggered. Our Response: fullResponse.contentToString()")
+                Log.i(
+                    TAG,
+                    "NDEF_READ_BINARY triggered. Our Response: fullResponse.contentToString()"
+                )
 
-                READ_CAPABILITY_CONTAINER_CHECK = false
+                ccContainerChecked = false
 
                 if (vibrator == null) {
                     vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                     vibrator?.vibrate(vibrationEffect)
-                    Log.d(TAG, "vibrator on")
+                    Log.d(TAG, "Vibrator on")
                 } else {
                     vibrator?.vibrate(vibrationEffect)
-                    Log.d(TAG, "vibrator on")
+                    Log.d(TAG, "Vibrator on")
                 }
 
                 response
-            }
-
-            else -> {
+            }else -> {
                 Log.d(TAG, "unknown commandApdu")
-                A_ERROR
+                error
             }
-
         }
 
         return response
@@ -255,14 +220,14 @@ class NFCComm(
 
     private fun ByteArray.toHex(): String {
         val result = StringBuffer()
-        val HEX_CHARS = "0123456789ABCDEF".toCharArray()
+        val hexChars = "0123456789ABCDEF".toCharArray()
 
         forEach {
             val octet = it.toInt()
             val firstIndex = (octet and 0xF0).ushr(4)
             val secondIndex = octet and 0x0F
-            result.append(HEX_CHARS[firstIndex])
-            result.append(HEX_CHARS[secondIndex])
+            result.append(hexChars[firstIndex])
+            result.append(hexChars[secondIndex])
         }
 
         return result.toString()
@@ -297,10 +262,10 @@ class NFCComm(
 
 
     override fun onDeactivated(reason: Int) {
-        if(reason == 1){
-            Log.d("nfc123", "DEACTIVATION_LINK_LOSS")
-        }else{
-            Log.d("nfc123", "DEACTIVATION_DESELECTED")
+        if (reason == 1) {
+            Log.i(TAG, "DEACTIVATION_LINK_LOSS")
+        } else {
+            Log.i(TAG, "DEACTIVATION_DESELECTED")
         }
     }
 
@@ -314,43 +279,60 @@ class NFCComm(
 
 
             if (tag != null) {
+                val ndef = android.nfc.tech.Ndef.get(tag)
 
-                READ_CAPABILITY_CONTAINER_CHECK = false
+                if (ndef != null) {
+                    Log.i(TAG, "NDEF detected")
+
+
+
+                    ndef.connect()
+
+                    val response = ndef.ndefMessage.toByteArray()
+
+
+
+                    viewModel.processNFCData(response)
+                    return@ReaderCallback
+
+                }
+
+                ccContainerChecked = false
 
 
                 val isoDep = android.nfc.tech.IsoDep.get(tag)
                 isoDep?.connect()
 
 
-                var response = isoDep.transceive(APDU_SELECT)
+                var response = isoDep.transceive(applicationSelect)
 
-                Log.i("NFC123", "SEND APDU_SELECT")
-                Log.i("NFC123", "Response: ${response?.contentToString()}")
+                Log.i(TAG, "send: application select")
+                Log.i(TAG, "Response: ${response?.contentToString()}")
 
-                response = isoDep.transceive(CAPABILITY_CONTAINER_OK)
+                response = isoDep.transceive(capabilityContainerSelect)
 
-                Log.i("NFC123", "SEND CAPABILITY_CONTAINER_OK")
-                Log.i("NFC123", "Response: ${response?.contentToString()}")
+                Log.i(TAG, "send: capability container select")
+                Log.i(TAG, "Response: ${response?.contentToString()}")
 
-                response = isoDep.transceive(READ_CAPABILITY_CONTAINER)
+                response = isoDep.transceive(readBinaryFromCC)
 
-                Log.i("NFC123", "SEND READ_CAPABILITY_CONTAINER")
-                Log.i("NFC123", "Response: ${response?.contentToString()}")
+                Log.i(TAG, "send: read binary from CC")
+                Log.i(TAG, "Response: ${response?.contentToString()}")
 
-                response = isoDep.transceive(NDEF_SELECT_OK)
+                response = isoDep.transceive(ndefSelect)
 
-                Log.i("NFC123", "NDEF_SELECT_OK")
-                Log.i("NFC123", "Response: ${response?.contentToString()}")
+                Log.i(TAG, "send: ndef select")
+                Log.i(TAG, "Response: ${response?.contentToString()}")
 
-                response = isoDep.transceive(NDEF_READ_BINARY_NLEN)
+                response = isoDep.transceive(ndefReadBinaryLen)
 
-                Log.i("NFC123", "NDEF_READ_BINARY_NLEN")
-                Log.i("NFC123", "Response: ${response?.contentToString()}")
+                Log.i(TAG, "send: ndef read binary len")
+                Log.i(TAG, "Response: ${response?.contentToString()}")
 
-                response = isoDep.transceive(NDEF_READ_BINARY)
+                response = isoDep.transceive(ndefReadBinary)
 
-                Log.i("NFC123", "NDEF_READ_BINARY")
-                Log.i("NFC123", "Response: ${response?.contentToString()}")
+                Log.i(TAG, "send: ndef read binary")
+                Log.i(TAG, "Response: ${response?.contentToString()}")
 
                 isoDep.close()
 

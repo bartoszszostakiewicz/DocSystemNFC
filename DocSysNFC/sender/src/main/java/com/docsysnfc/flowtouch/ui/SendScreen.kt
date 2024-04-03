@@ -2,12 +2,6 @@ package com.docsysnfc.flowtouch.ui
 
 import android.app.Activity
 import android.content.Context
-import android.nfc.tech.Ndef
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.util.Log
-import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -37,7 +31,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,24 +43,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
 import androidx.navigation.NavController
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
 import com.docsysnfc.flowtouch.model.File
-import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
 import com.docsysnfc.flowtouch.ui.theme.backgroundColor
 import com.docsysnfc.flowtouch.ui.theme.buttonsColor
 import com.docsysnfc.flowtouch.ui.theme.deleteButtonsColor
 import com.docsysnfc.flowtouch.ui.theme.tilesColor
-import java.nio.charset.Charset
 
-fun updateNfcDataCipher(context: Context, isActive: Boolean) {
-    context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
-        putBoolean("isCipher", isActive)
-        apply()
-    }
-}
 
 fun getIconFile(file: File): Int {
 
@@ -99,32 +83,18 @@ fun SendScreen(
     index: Int
 ) {
 
-//    val authenticationState by viewModel.authenticationState.collectAsState()
-//
-//    if(authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN){
-//        navController.navigate(NFCSysScreen.Login.name)
-//    }
+    val uiState by viewModel.uiState.collectAsState()
 
-    val additionalEncryption by viewModel.additionalEncryption.collectAsState()
+
     var showEncryptionDialog by remember { mutableStateOf(false) }
 
-    val file = remember { viewModel.modelSelectedFiles.value[index] }
+    val file = remember { uiState.modelSelectedFiles[index] }
 
-    // Efekt uboczny do wyświetlania dialogu
-    LaunchedEffect(additionalEncryption) {
-        showEncryptionDialog = additionalEncryption
+
+    LaunchedEffect(uiState.additionalEncryption) {
+        showEncryptionDialog = uiState.additionalEncryption
     }
 
-    BackHandler(enabled = true) {
-        // Wykonaj akcję powrotu do ekranu głównego
-//        navController.popBackStack()
-        navController.navigate(NFCSysScreen.Home.name){
-//            popUpTo(NFCSysScreen.Home.name){
-//                inclusive = true
-//            }
-        }
-
-    }
 
 
     if (showEncryptionDialog) {
@@ -139,15 +109,15 @@ fun SendScreen(
             confirmButton = {
                 Button(
                     onClick = {
-
+                        viewModel.cipherSessionKey(file)
                         showEncryptionDialog = false
                     },
-                    enabled = file.publicKey.isNotEmpty(),
+                    enabled = uiState.publicKey.isNotEmpty(),
                     colors = ButtonDefaults.buttonColors(
                         buttonsColor, contentColor = Color.White
                     ),
                 ) {
-                    Text(stringResource(id = R.string.submit_pkey))
+                    Text(stringResource(id = R.string.submit_pkey) + stringResource(R.string.colon)+"\n" + uiState.publicKeyOwner)
                 }
             },
             dismissButton = {
@@ -167,41 +137,9 @@ fun SendScreen(
 
         )
     }
+    if ((uiState.additionalEncryption && uiState.publicKey.isNotEmpty()) || !uiState.additionalEncryption) {
 
-
-    if((additionalEncryption && file.publicKey.isNotEmpty()) || !additionalEncryption) {
-
-        val activeUrl = viewModel.activeURL.collectAsState()
         viewModel.disableNFCReaderMode(context as Activity)
-
-        if(additionalEncryption){
-            //cipher key using public key
-            val encodedKeySecret = java.util.Base64.getDecoder().decode(file.secretKey)
-
-            viewModel.encryptDataRSA(encodedKeySecret, file.publicKey) { encryptedKey ->
-                // Ta część kodu zostanie wykonana, gdy operacja encryptDataRSA zostanie ukończona
-
-                val base64EncryptedKey = java.util.Base64.getEncoder().encodeToString(encryptedKey)
-                file.secretKey = base64EncryptedKey
-                Log.d("NFC123", "Encrypted key: $base64EncryptedKey")
-
-                Log.d("nfc123", "active url before update: ${activeUrl.value}")
-                viewModel.updateActiveURL(file)
-                Log.d("nfc123", "active url after update: ${activeUrl.value}")
-            }
-        }
-
-//        viewModel.setNdefMessage()
-
-        /************TODO ADD VIBRATION during sending files***************/
-
-        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        val vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
-
-        /***************************/
-
-        var isCipher by rememberSaveable { mutableStateOf(false) }
-
 
         val animate by remember { mutableStateOf(/*viewModel.fileIsInCloud(file)*/ false) }
 
@@ -227,7 +165,6 @@ fun SendScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-//            .background(if (animate) backgroundColor else fileIsNotInCloudColor)\
                 .background(backgroundColor)
         ) {
             Column(
@@ -264,7 +201,7 @@ fun SendScreen(
                         ) {
                             Icon(
                                 painter = painterResource(id = getIconFile(file)),
-                                contentDescription = "Icon",
+                                contentDescription = stringResource(id = R.string.file_icon),
                                 modifier = Modifier
                                     .size(iconSize)
                                     .align(Alignment.CenterVertically)
@@ -299,45 +236,11 @@ fun SendScreen(
                 }
             }
         }
-    }
-    else{
+    } else {
         viewModel.enableNFCReaderMode(context as Activity)
-        val nfcTag = viewModel.nfcTag.collectAsState()
-
-        LaunchedEffect(nfcTag.value) {
-            nfcTag.value?.let {tag ->
-                try {
-
-                    val ndef = Ndef.get(tag)
-                    ndef?.connect()
-                    val ndefMessage = ndef?.ndefMessage
-                    if (ndefMessage != null) {
-                        val payload = ndefMessage.records[0].payload
-                        val payloadStr = String(payload, Charset.forName("UTF-8"))
-
-                        Log.d("NFC123", "Payload: $payloadStr")
-
-                        //viewModel.downloadFile(payloadStr)
-                        val pkey = payloadStr.drop(3)
-
-                        if(viewModel.validatePublicKey(pkey)){
-                            file.publicKey = pkey
-                        }else{
-                            Toast.makeText(context, context.getString(R.string.invalid_pkey), Toast.LENGTH_SHORT).show()
-                        }
-
-                    }
-                    ndef?.close()
-
-
-
-                } catch (e: Exception) {
-                   // viewModel.setDownloadStatus(false)
-
-                    //Log.e("NFC123", "Błąd przy odczycie NFC: ${e.message}")
-                }
-            }
-        }
     }
 }
+
+
+
 

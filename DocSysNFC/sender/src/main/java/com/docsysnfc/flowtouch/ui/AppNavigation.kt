@@ -40,8 +40,6 @@ fun AppNavigation(viewModel: MainViewModel, context: Context) {
             val index = backStackEntry.arguments?.getInt("index")
             if (index != null) {
                 SendScreen(navController, viewModel, context, index)
-            } else {
-                // Obsługa błędu, jeśli index jest null
             }
         }
 
@@ -73,8 +71,7 @@ fun AppNavigation(viewModel: MainViewModel, context: Context) {
         composable(NFCSysScreen.Create.name) {
             CreateAccountScreen(
                 navController,
-                viewModel,
-                context
+                viewModel
             )
         }
 

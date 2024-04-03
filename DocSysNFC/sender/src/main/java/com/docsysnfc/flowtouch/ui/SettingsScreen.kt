@@ -19,14 +19,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,12 +38,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
-import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationState
-import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
 import com.docsysnfc.flowtouch.ui.theme.backgroundColor
 import com.docsysnfc.flowtouch.ui.theme.buttonsColor
 import com.docsysnfc.flowtouch.ui.theme.deleteButtonsColor
@@ -55,21 +51,17 @@ import com.docsysnfc.flowtouch.ui.theme.textColor
 import com.docsysnfc.flowtouch.ui.theme.tilesColor
 import com.docsysnfc.flowtouch.ui.theme.whiteColor
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun SettingsScreen(navController: NavHostController, viewModel: MainViewModel, context: Context) {
 
-    val authenticationState by viewModel.authenticationState.collectAsState()
 
-    if (authenticationState == AuthenticationState.FAILURE || authenticationState == AuthenticationState.UNKNOWN) {
-        navController.navigate(NFCSysScreen.Login.name)
-    }
-
+    val uiState by viewModel.uiState.collectAsState()
 
     val showDialog = remember { mutableStateOf(false) }
 
-    val additionalEncryption = viewModel.additionalEncryption.collectAsState().value
-    val cloudMirroring = viewModel.cloudMirroring.collectAsState().value
+    val additionalEncryption = uiState.additionalEncryption
+    val cloudMirroring = uiState.cloudMirroring
 
     if (showDialog.value) {
 
@@ -94,10 +86,10 @@ fun SettingsScreen(navController: NavHostController, viewModel: MainViewModel, c
                         },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = outlineTextFieldFocusedBorderColor,
                             unfocusedBorderColor = outlineTextFieldUnfocusedBorderColor,
-                            cursorColor = outlineTextFieldCursorColor,
+                            cursorColor = outlineTextFieldCursorColor
                         ),
                     )
                 }
@@ -149,7 +141,7 @@ fun SettingsScreen(navController: NavHostController, viewModel: MainViewModel, c
         topBar = {
             HomeScreenTopBar(
                 title = stringResource(id = R.string.settings_title),
-                navController = NavController(context),
+                navController = navController,
                 viewModel = viewModel
             )
         }

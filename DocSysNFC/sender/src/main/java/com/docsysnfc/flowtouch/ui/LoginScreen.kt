@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
@@ -21,8 +22,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
-import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationState
+import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
 import com.docsysnfc.flowtouch.ui.theme.backgroundColor
 import com.docsysnfc.flowtouch.ui.theme.buttonsColor
@@ -56,15 +57,16 @@ import com.docsysnfc.flowtouch.ui.theme.textColor
 import com.docsysnfc.flowtouch.ui.theme.whiteColor
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+const val TAG = "NFC123"
+
 @Composable
 fun LoginScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
 
     viewModel.disableNFCReaderMode(context as Activity)
 
-    val authenticationState =  viewModel.authenticationState.collectAsState().value
+    val uiState by viewModel.uiState.collectAsState()
 
-    if (authenticationState == AuthenticationState.SUCCESS) {
+    if (uiState.authenticationStatus == AuthenticationStatus.SUCCESS) {
         navController.navigate(NFCSysScreen.Home.name)
     }
 
@@ -88,38 +90,26 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
 
     val scrollState = rememberScrollState()
 
-    LaunchedEffect(authenticationState) {
-        when (authenticationState) {
-            AuthenticationState.SUCCESS -> {
-                Log.d("NFC123", "Authentication success")
+    LaunchedEffect(uiState.authenticationStatus) {
+        when (uiState.authenticationStatus) {
+            AuthenticationStatus.SUCCESS -> {
+                Log.d(TAG, "Authentication success")
 
-                if(viewModel.navigationDestination.value == NFCSysScreen.Receive){
+                if(uiState.navigationDestination == NFCSysScreen.Receive){
                     navController.navigate(NFCSysScreen.Receive.name)
                 }else{
                     navController.navigate(NFCSysScreen.Home.name)
                 }
 
-
-                // Handle success, navigate to another screen
             }
 
-            AuthenticationState.FAILURE -> {
+            AuthenticationStatus.FAILURE -> {
                 //dialog authentication failed
-                Log.d("UI Event", "Authentication failed")
+                Log.d(TAG, "Authentication failed")
                 // Handle failure
             }
             // ... other states
-            AuthenticationState.UNKNOWN -> {
-
-                //TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                Log.d("NFC123", "Authentication success")
-                if(viewModel.navigationDestination.value == NFCSysScreen.Receive){
-                    Log.d("NFC123", "RECEIVE OK")
-                    navController.navigate(NFCSysScreen.Receive.name)
-                }else{
-                    navController.navigate(NFCSysScreen.Home.name)
-                }
-
+            AuthenticationStatus.UNKNOWN -> {
 
             }
         }
@@ -136,6 +126,7 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
                 .fillMaxSize()
                 .padding(16.dp)
                 .verticalScroll(state = scrollState)
+                .imePadding()
                 .background(color = backgroundColor),
 
             verticalArrangement = Arrangement.Center,
@@ -205,8 +196,7 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
                         }
                     },
                     onClick = {
-                        // TODO: Handle "Register now" click here
-                        Log.d("UI Event", "Navigate to registration screen")
+                        Log.d(TAG, "Navigate to registration screen")
                         navController.navigate(NFCSysScreen.Create.name)
                     },
                     modifier = Modifier.padding(end = 24.dp)
@@ -230,7 +220,7 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun CustomTextField(
     text: String,
@@ -248,11 +238,10 @@ fun CustomTextField(
                 color = textColor
             )
                 },
-        colors = TextFieldDefaults.outlinedTextFieldColors(
+        colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = outlineTextFieldFocusedBorderColor,
             unfocusedBorderColor = outlineTextFieldUnfocusedBorderColor,
-            cursorColor = outlineTextFieldCursorColor,
-
+            cursorColor = outlineTextFieldCursorColor
         ),
         singleLine = true,
 
@@ -264,8 +253,7 @@ fun CustomTextField(
 }
 
 
-// Function to validate email format using regular expression \
 fun isValidEmail(email: String): Boolean {
-    val emailRegex = "^[A-Za-z](.*)([@]{1})(.{1,})(\\.)(.{1,})"
+    val emailRegex = "^[A-Za-z](.*)(@)(.+)(\\.)(.+)"
     return email.matches(emailRegex.toRegex())
 }
