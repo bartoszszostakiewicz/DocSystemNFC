@@ -15,7 +15,17 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.IvParameterSpec
 
+/**
+ * The SecurityManager class provides a range of cryptographic operations for secure data handling.
+ * This includes methods to manage encryption and decryption of data, validate public keys,
+ * and work with the Android KeyStore for secure key management.
+ *
+ * This class encapsulates various security-related functionalities such as key generation,
+ * key retrieval, and cryptographic operations (e.g., RSA and AES encryption/decryption),
+ * providing a simplified interface for handling common cryptographic tasks.
+ */
 class SecurityManager {
+
 
     /**
      * Encrypts data with RSA
@@ -35,7 +45,6 @@ class SecurityManager {
             val keyLength = (key as RSAPublicKey).modulus.bitLength()
             val maxBlockSize = (keyLength / 8) - 11
 
-            // Podziel dane na bloki o maksymalnej długości
             var offset = 0
             while (offset < data.size) {
                 val blockSize =
@@ -46,7 +55,6 @@ class SecurityManager {
                 offset += maxBlockSize
             }
         } catch (e: Exception) {
-            // Obsłuż wyjątek
             e.printStackTrace()
         }
     }
@@ -59,41 +67,43 @@ class SecurityManager {
      * @param callback function to process decrypted data
      */
     fun decryptDataRSA(
-        encryptedDataBlocks: Array<ByteArray>,
+        encryptedDataBlocks: ByteArray,
         alias: String,
         callback: (ByteArray) -> Unit
     ) {
         try {
             Log.d(TAG, "Starting decryption process")
 
-            // Ładowanie AndroidKeyStore
             val keyStore = KeyStore.getInstance("AndroidKeyStore").apply {
                 load(null)
             }
             Log.d(TAG, "KeyStore loaded")
 
-            // Pobieranie klucza prywatnego za pomocą aliasu
             val privateKeyEntry = keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
                 ?: throw Exception("No such alias: $alias")
+
             Log.d(TAG, "PrivateKeyEntry obtained")
 
             val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
             cipher.init(Cipher.DECRYPT_MODE, privateKeyEntry.privateKey)
             Log.d(TAG, "Cipher initialized for decryption")
 
-            // Odszyfrowanie każdego bloku danych
-            encryptedDataBlocks.forEach { encryptedBlock ->
-                val decryptedBlock = cipher.doFinal(encryptedBlock)
-                Log.d(TAG, "Block decrypted")
-                callback(decryptedBlock)
-            }
+                try {
+                    Log.d(TAG, "Decrypting $encryptedDataBlocks")
+                    val decryptedBlock = cipher.doFinal(encryptedDataBlocks)
+                    callback(decryptedBlock)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error during decryption: ${e.message}")
+                    e.printStackTrace()
+                }
+
             Log.d(TAG, "Decryption process completed")
         } catch (e: Exception) {
-            // Obsłuż wyjątek
             Log.e(TAG, "Error during decryption: ${e.message}")
             e.printStackTrace()
         }
     }
+
 
     /**
      * Encrypts data with AES
@@ -102,7 +112,7 @@ class SecurityManager {
      */
     fun encryptDataAES(data: ByteArray): Triple<ByteArray, SecretKey, ByteArray> {
         val keyGenerator = KeyGenerator.getInstance("AES")
-        keyGenerator.init(256) // Używamy klucza 256-bitowego dla AES
+        keyGenerator.init(256)
         val secretKey = keyGenerator.generateKey()
 
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
@@ -127,47 +137,30 @@ class SecurityManager {
      * @param iv the initialization vector
      * @return the decrypted data
      */
-
     fun decryptDataAES(encryptedData: ByteArray, secretKey: SecretKey, iv: ByteArray): ByteArray {
+
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         val ivSpec = IvParameterSpec(iv)
-        Log.d(TAG, "ivSpec: ${ivSpec.iv}")
-        Log.d(TAG, "Len ivSpec iv: ${ivSpec.iv.size}")
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
 
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
 
         return cipher.doFinal(encryptedData)
     }
 
-    fun splitDataIntoRSABlocks(data: ByteArray, keyLengthInBits: Int): Array<ByteArray> {
-        val maxBlockSize =
-            (keyLengthInBits / 8) - 11 // Maksymalny rozmiar bloku dla szyfrowania RSA.
-
-        // Lista na przechowywanie bloków
-        val blocks = mutableListOf<ByteArray>()
-
-        // Podział danych na bloki
-        var offset = 0
-        while (offset < data.size) {
-            val blockSize = minOf(maxBlockSize, data.size - offset)
-            val block = data.copyOfRange(offset, offset + blockSize)
-            blocks.add(block)
-            offset += blockSize
-        }
-
-        // Konwersja listy na tablicę
-        return blocks.toTypedArray()
-    }
-
+    /**
+     * Checks if an RSA key pair exists in the Android KeyStore under the specified alias.
+     * If the key pair doesn't exist, it generates a new one with the RSA algorithm and PKCS1 padding.
+     *
+     * @param alias The unique alias used to check the presence of the key pair in the KeyStore.
+     *              The same alias is used for generating the key pair if it doesn't exist.
+     **/
     fun checkKey(alias: String) {
         val keyStore = KeyStore.getInstance("AndroidKeyStore")
 
         keyStore.load(null)
 
-        // Sprawdzenie, czy klucz już istnieje.
         if (!keyStore.containsAlias(alias)) {
-            Log.d(TAG, "Klucz nie istnieje, generowanie klucza")
-            // Klucz nie istnieje, więc generujemy nowy.
+            Log.d(TAG, "Key does not exist")
             val keyPairGenerator =
                 KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore")
             val parameterSpec = KeyGenParameterSpec.Builder(
@@ -180,16 +173,24 @@ class SecurityManager {
             try {
                 keyPairGenerator.initialize(parameterSpec)
                 keyPairGenerator.generateKeyPair()
-                Log.d(TAG, "Klucz został pomyślnie wygenerowany")
+                Log.d(TAG, "Key generated successfully")
             } catch (e: Exception) {
-                Log.e(TAG, "Błąd podczas generowania klucza: ${e.message}")
+                Log.e(TAG, "Error while generating key pair ${e.message}")
             }
         } else {
-            Log.d(TAG, "Klucz istnieje")
+            Log.d(TAG, "Keys exists")
         }
-
     }
 
+
+
+    /**
+     * Retrieves the public key associated with the given alias from the Android KeyStore.
+     * The public key is returned as a Base64 encoded String.
+     *
+     * @param alias The alias name used to retrieve the public key from the KeyStore.
+     * @return A Base64 encoded String representation of the public key.
+     */
     fun getPublicKey(alias: String): String {
         val keyStore = KeyStore.getInstance("AndroidKeyStore")
         keyStore.load(null)
@@ -198,8 +199,15 @@ class SecurityManager {
     }
 
 
-
-
+    /**
+     * Validates the format of the provided public key string.
+     *
+     * This method attempts to parse the provided Base64 encoded public key string into an
+     * RSA public key object to ensure that it is properly formatted and can be used for RSA operations.
+     *
+     * @param publicKey The Base64 encoded string representation of the RSA public key to validate.
+     * @return A boolean value indicating whether the public key is valid (true) or not (false).
+     */
     fun validatePublicKey(publicKey: String): Boolean {
         return try {
             val keyFactory = KeyFactory.getInstance("RSA")
@@ -207,10 +215,10 @@ class SecurityManager {
             keyFactory.generatePublic(keySpec)
             true
         } catch (e: Exception) {
+            Log.d(TAG, "Invalid public key: ${e.message}")
             false
         }
     }
-
 
 }
 

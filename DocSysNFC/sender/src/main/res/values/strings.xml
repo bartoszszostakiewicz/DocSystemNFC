@@ -80,8 +80,15 @@
     <string name="open">Open</string>
     <string name="integrity_check">Checksum validation</string>
     <string name="integrity_check_info">"Enabling this option will automatically calculate a checksum for your files to verify that their content has remained unchanged during transfer or storage. "</string>
-    <string name="setting_info">This is example of description of setting.\n</string>
-    <string name="setting_title">Test setting</string>
-    <string name="app_name_new">flowtouch</string>
+    <string name="setting_info" translatable="false">This is example of description of setting.\n</string>
+    <string name="setting_title" translatable="false">Test setting</string>
+    <string name="app_name_new" translatable="false">flowtouch</string>
+    <string name="no_app_info">No application found to open this file.</string>
+    <string name="additional_encryption_on">Additional encrytpion on.</string>
+    <string name="additional_encryption_off">Additional encryption off.</string>
+    <string name="cloud_mirroring_on">Cloud mirroring on.</string>
+    <string name="cloud_mirroring_off">Cloud mirroring off.</string>
+    <string name="file_already_added">File already added.</string>
+    <string name="file_exist">File already exist.</string>
 </resources>
 

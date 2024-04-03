@@ -125,7 +125,7 @@ fun TopBarClickableIcon(navController: NavController, viewModel: MainViewModel) 
             modifier = Modifier
                 .size(30.dp)
                 .clickable {
-                    viewModel.setNdefMessage(viewModel.getPublicKey())
+                    viewModel.setNdefMessage(viewModel.getPublicKey()+R.string.separator.toString()+ FirebaseAuth.getInstance().currentUser?.email.toString())
                     navController.navigate(NFCSysScreen.ShareKeyScreen.name)
                 }
         )

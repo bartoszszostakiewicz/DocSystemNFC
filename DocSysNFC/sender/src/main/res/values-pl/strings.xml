@@ -80,4 +80,10 @@
     <string name="open">Otwórz</string>
     <string name="integrity_check">Suma kontrolna</string>
     <string name="integrity_check_info">Ta opcja aktywuje automatyczne obliczanie sumy kontrolnej dla Twoich plików, co pozwala sprawdzić, czy ich zawartość pozostała niezmieniona podczas przesyłania.</string>
+    <string name="no_app_info">Nie znaleziono aplikacji do otwarcia tego typu pliku.</string>
+    <string name="additional_encryption_on">Dodatkowe szyfrowanie jest włączone.</string>
+    <string name="additional_encryption_off">Dodatkowe szyfrowanie jest wyłączone.</string>
+    <string name="cloud_mirroring_on">Odzwierciedlenie chmury włączone.</string>
+    <string name="cloud_mirroring_off">Odzwierciedlenie chmury włączone.</string>
+    <string name="file_already_added">Plik został już dodany.</string>
 </resources>

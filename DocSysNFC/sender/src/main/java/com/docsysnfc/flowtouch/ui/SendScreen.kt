@@ -128,7 +128,7 @@ fun SendScreen(
             confirmButton = {
                 Button(
                     onClick = {
-
+                        viewModel.cipherSessionKey(file)
                         showEncryptionDialog = false
                     },
                     enabled = uiState.publicKey.isNotEmpty(),
@@ -136,7 +136,7 @@ fun SendScreen(
                         buttonsColor, contentColor = Color.White
                     ),
                 ) {
-                    Text(stringResource(id = R.string.submit_pkey))
+                    Text(stringResource(id = R.string.submit_pkey) + stringResource(R.string.colon)+"\n" + uiState.publicKeyOwner)
                 }
             },
             dismissButton = {

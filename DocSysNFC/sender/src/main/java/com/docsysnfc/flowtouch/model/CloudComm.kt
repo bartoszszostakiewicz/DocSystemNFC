@@ -11,14 +11,12 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
+import com.docsysnfc.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import java.io.IOException
 import java.net.URL
 
-interface UrlCallback {
-    fun onUrlAvailable(url: String)
-}
 
 val TAG = "NFC123"
 
@@ -40,15 +38,15 @@ class CloudComm(
         val destinationFile =
             java.io.File(context.getExternalFilesDir(null), "$downloadDirectory/$fileName")
 
-        // Sprawdzenie istnienia pliku
         if (destinationFile.exists()) {
-            Log.d(TAG, "Plik już istnieje: ${destinationFile.absolutePath}")
+            Log.d(TAG, "File already exists: ${destinationFile.absolutePath}")
             callback(
                 Uri.fromFile(destinationFile),
-                "Plik już istnieje: ${destinationFile.absolutePath}"
+                "${context.getString(R.string.file_exist)}: ${destinationFile.absolutePath}"
             )
             return
         }
+
 
         val httpsIndex = downloadLink.indexOf("https")
 
@@ -97,12 +95,11 @@ class CloudComm(
                 == PackageManager.PERMISSION_GRANTED
             ) {
 
-                // Tworzenie pliku lokalnego
                 val downloadsFolder =
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 val docSysNfcFolder = java.io.File(downloadsFolder, "DocSysNFC")
 
-                // Sprawdzenie czy katalog istnieje, jeśli nie - próba utworzenia
+
                 if (!docSysNfcFolder.exists()) {
                     docSysNfcFolder.mkdirs()
                 }
@@ -112,36 +109,34 @@ class CloudComm(
                     fileName + FileManager.getExtensionFromMimeType(mimeType)
                 )
 
-                // Dodanie logiki zapobiegającej nadpisywaniu istniejących plików
                 var counter = 1
                 val originalName = localFile.nameWithoutExtension
                 val extension = localFile.extension
 
                 while (localFile.exists()) {
-                    // Modyfikacja nazwy pliku, dodając sufiks z numerem
                     val newName = "$originalName($counter).$extension"
                     localFile = java.io.File(downloadsFolder, newName)
                     counter++
                 }
 
 
-                // Pobieranie pliku
+
                 storageRef.getFile(localFile).addOnSuccessListener {
-                    Log.d(TAG, "Plik został pomyślnie pobrany: ${localFile.absolutePath}")
-                    // Przekazanie Uri do pobranego pliku
+                    Log.d(TAG, "File successfully downloaded: ${localFile.absolutePath}")
+                    // Passing the Uri of the downloaded file
                     callback(Uri.fromFile(localFile), mimeType)
                 }.addOnFailureListener { exception ->
-                    Log.e(TAG, "Błąd pobierania pliku: $exception")
+                    Log.e(TAG, "Error downloading file: $exception")
                     callback(null, "")
                 }
+
             } else {
-                // Obsługa przypadku, gdy nie ma uprawnień
-                Log.e(TAG, "Brak uprawnień do zapisu w katalogu Downloads")
+                Log.e(TAG, "No write permissions for the Downloads directory")
                 callback(null, "")
             }
 
         }.addOnFailureListener {
-            Log.e(TAG, "Błąd pobierania metadanych: $it")
+            Log.e(TAG, "Error downloading metadata: $it")
         }
     }
 
@@ -152,30 +147,22 @@ class CloudComm(
         context: Context,
         callback: (Uri?, String) -> Unit
     ) {
-
-
-        // Logowanie URL
-
-
-        // Uzyskanie referencji do pliku w Firebase Storage
         val storageRef = firebaseStorage.getReferenceFromUrl(link)
-        Log.d(TAG, "storageRef: $storageRef")
+        Log.d(TAG, "StorageRef: $storageRef")
 
-        // Obsługa metadanych
+
         storageRef.metadata.addOnSuccessListener { metadata ->
-            Log.d(TAG, "metadata: $metadata")
 
             val fileName = metadata.name ?: "unknown"
             val mimeType = metadata.contentType ?: "application/octet-stream"
 
 
-            // Sprawdzenie, czy plik o takiej nazwie już istnieje i modyfikacja nazwy
+
             var newFileName = fileName
             var fileExists =
                 checkIfFileExists(context, Environment.DIRECTORY_DOWNLOADS, newFileName, mimeType)
             var counter = 1
             while (fileExists) {
-                // Dodanie numeru do nazwy pliku
                 newFileName = "${fileName}_${counter++}"
                 fileExists = checkIfFileExists(
                     context,
@@ -197,47 +184,45 @@ class CloudComm(
             }
 
             try {
-                // Utworzenie Uri wewnętrznego z użyciem MediaStore
                 val fileUri = contentResolver.insert(
                     MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                     contentValues
                 )
                 fileUri?.let { uri ->
-                    // Otworzenie strumienia danych wyjściowych
+                    // Opening output data stream
                     val outputStream = contentResolver.openOutputStream(uri)
                     if (outputStream != null) {
-                        // Pobieranie strumienia z obiektu StorageReference
+                        // Retrieving stream from StorageReference object
                         storageRef.stream.addOnSuccessListener { stream ->
                             try {
                                 stream.stream.copyTo(outputStream)
-                                outputStream.close() // Zamknięcie strumienia po zakończeniu zapisu
-                                Log.d(TAG, "Plik został pomyślnie pobrany: ${uri}")
-                                // Przekazanie Uri do pobranego pliku
+                                outputStream.close() // Closing the stream after writing is complete
+                                Log.d(TAG, "File successfully downloaded: $uri")
+                                // Passing the Uri of the downloaded file
                                 callback(uri, mimeType)
                             } catch (e: IOException) {
-                                Log.e(TAG, "Błąd przy zapisie danych do strumienia: $e")
+                                Log.e(TAG, "Error while writing data to the stream: $e")
                                 callback(null, "")
                             }
                         }.addOnFailureListener { exception ->
-                            Log.e(TAG, "Błąd pobierania pliku: $exception")
+                            Log.e(TAG, "Error downloading file: $exception")
                             callback(null, "")
                         }
                     } else {
-                        Log.e(TAG, "Nie można otworzyć OutputStream")
+                        Log.e(TAG, "Cannot open OutputStream")
                         callback(null, "")
                     }
                 } ?: run {
-                    Log.e(TAG, "Nie można utworzyć pliku w MediaStore")
+                    Log.e(TAG, "Unable to create file in MediaStore")
                     callback(null, "")
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "Błąd przy tworzeniu pliku w MediaStore: $e")
+                Log.e(TAG, "Error creating file in MediaStore: $e")
                 callback(null, "")
             }
-        }.addOnFailureListener {
-            Log.e(TAG, "Błąd pobierania metadanych: $it")
         }
+
     }
 
     private fun checkIfFileExists(
@@ -277,7 +262,7 @@ class CloudComm(
             return
         }
 
-        // Dodanie unikalnego identyfikatora do nazwy pliku
+
         val uniqueID = System.currentTimeMillis().toString()
         val fileName = if (selectedFile?.name?.contains(".") == true) {
             val namePart = selectedFile.name.substringBeforeLast(".")
@@ -294,13 +279,12 @@ class CloudComm(
         byteArray?.let {
             if (it.isNotEmpty()) {
                 fileRef.putBytes(it).addOnSuccessListener {
-                    // Po udanym przesłaniu pliku, pobierz jego URL
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         val downloadUrl = uri.toString()
                         selectedFile?.url = URL(downloadUrl)
                         onUrlAvailable(downloadUrl)
                     }.addOnFailureListener { exception ->
-                        Log.d(TAG, "onCreatexd: $exception")
+                        Log.d(TAG, "Upload failure: $exception")
                         onUrlAvailable("Error: $exception")
                     }
                 }.addOnFailureListener {
@@ -311,12 +295,13 @@ class CloudComm(
                     }
                 }
             } else {
-                Log.d("TAG123", "ByteArray is empty, file not uploaded")
+                Log.d(TAG, "ByteArray is empty, file not uploaded")
                 onUrlAvailable("Error: ByteArray is empty")
                 if (selectedFile != null) {
                     selectedFile.isUploading = false
                 } else {
-
+                    Log.d(TAG, "Selected file is null")
+                    onUrlAvailable("Error: Selected file is null")
                 }
             }
         } ?: run {
@@ -365,7 +350,7 @@ class CloudComm(
 
     fun getFilesList(onResult: (List<File>) -> Unit, onError: (Exception) -> Unit) {
         if (auth.currentUser == null) {
-            Log.d(TAG, "onCreate: ${auth.currentUser}")
+            Log.d(TAG, "User is null: ${auth.currentUser}")
             return
         }
         val fileRef = firebaseStorage.reference.child("files/${auth.currentUser!!.uid}")
@@ -376,7 +361,7 @@ class CloudComm(
                 var processedCount = 0
 
                 if (itemCount == 0) {
-                    onResult(files) // Jeśli nie ma plików, zwróć pustą listę.
+                    onResult(files)
                 } else {
                     listResult.items.forEach { storageReference ->
                         storageReference.metadata.addOnSuccessListener { metadata ->
@@ -390,16 +375,16 @@ class CloudComm(
                                 if (processedCount == itemCount) {
                                     onResult(files)
                                 }
-                            }.addOnFailureListener { exception ->
+                            }.addOnFailureListener {
                                 processedCount++
                                 if (processedCount == itemCount) {
-                                    onResult(files) // Zwraca listę nawet jeśli niektóre pliki nie powiodły się.
+                                    onResult(files)
                                 }
                             }
-                        }.addOnFailureListener { exception ->
+                        }.addOnFailureListener {
                             processedCount++
                             if (processedCount == itemCount) {
-                                onResult(files) // Zwraca listę nawet jeśli niektóre pliki nie powiodły się.
+                                onResult(files)
                             }
                         }
                     }

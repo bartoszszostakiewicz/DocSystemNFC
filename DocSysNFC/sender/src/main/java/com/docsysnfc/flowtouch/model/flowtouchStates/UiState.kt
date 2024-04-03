@@ -7,6 +7,7 @@ import com.docsysnfc.flowtouch.model.File
 data class UiState(
     val ndefMessage: String = "",
     val publicKey: String = "",
+    val publicKeyOwner: String = "",
     val fileIsCipher: Boolean = false,
     val fileIsDownloading: Boolean = false,
     val receivesFiles: List<File> = emptyList(),
