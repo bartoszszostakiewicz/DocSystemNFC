@@ -22,8 +22,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,7 +57,7 @@ import com.docsysnfc.flowtouch.ui.theme.textColor
 import com.docsysnfc.flowtouch.ui.theme.whiteColor
 
 
-val TAG = "NFC123"
+const val TAG = "NFC123"
 
 @Composable
 fun LoginScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
@@ -110,8 +110,6 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
             }
             // ... other states
             AuthenticationStatus.UNKNOWN -> {
-
-
 
             }
         }
@@ -222,7 +220,7 @@ fun LoginScreen(navController: NavController, viewModel: MainViewModel, context:
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun CustomTextField(
     text: String,
@@ -240,11 +238,10 @@ fun CustomTextField(
                 color = textColor
             )
                 },
-        colors = TextFieldDefaults.outlinedTextFieldColors(
+        colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = outlineTextFieldFocusedBorderColor,
             unfocusedBorderColor = outlineTextFieldUnfocusedBorderColor,
-            cursorColor = outlineTextFieldCursorColor,
-
+            cursorColor = outlineTextFieldCursorColor
         ),
         singleLine = true,
 
@@ -256,8 +253,7 @@ fun CustomTextField(
 }
 
 
-// Function to validate email format using regular expression \
 fun isValidEmail(email: String): Boolean {
-    val emailRegex = "^[A-Za-z](.*)([@]{1})(.{1,})(\\.)(.{1,})"
+    val emailRegex = "^[A-Za-z](.*)(@)(.+)(\\.)(.+)"
     return email.matches(emailRegex.toRegex())
 }

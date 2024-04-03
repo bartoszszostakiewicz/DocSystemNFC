@@ -18,15 +18,166 @@ import java.io.IOException
 import java.net.URL
 
 
-val TAG = "NFC123"
+const val TAG = "NFC123"
 
 class CloudComm(
     private val firebaseStorage: FirebaseStorage = FirebaseStorage.getInstance()
 ) {
 
-
     private val auth = FirebaseAuth.getInstance()
 
+
+    fun getAuthInstance(): FirebaseAuth {
+        return auth
+    }
+
+    fun uploadFile(
+        selectedFile: File?,
+        cipher: Boolean = false,
+        onUrlAvailable: (String) -> Unit
+    ) {
+
+        if (auth.currentUser == null) {
+            Log.d(TAG, "User not logged in")
+            onUrlAvailable("Error: User not logged in")
+            if (selectedFile != null) {
+                selectedFile.isUploading = false
+            }
+            return
+        }
+
+
+        val uniqueID = System.currentTimeMillis().toString()
+        val fileName = if (selectedFile?.name?.contains(".") == true) {
+            val namePart = selectedFile.name.substringBeforeLast(".")
+            val extensionPart = selectedFile.name.substringAfterLast(".")
+            "$namePart-$uniqueID.$extensionPart"
+        } else {
+            "${selectedFile?.name}-$uniqueID"
+        }
+
+        val fileRef =
+            firebaseStorage.reference.child("files/${auth.currentUser!!.uid}/$fileName")
+
+        val byteArray = if (cipher) selectedFile?.encryptedByteArray else null
+        byteArray?.let { it ->
+            if (it.isNotEmpty()) {
+                fileRef.putBytes(it).addOnSuccessListener {
+                    fileRef.downloadUrl.addOnSuccessListener { uri ->
+                        val downloadUrl = uri.toString()
+                        selectedFile?.url = URL(downloadUrl)
+                        onUrlAvailable(downloadUrl)
+                    }.addOnFailureListener { exception ->
+                        Log.d(TAG, "Upload failure: $exception")
+                        onUrlAvailable("Error: $exception")
+                    }
+                }.addOnFailureListener {
+                    Log.d(TAG, "Upload failure: $it")
+                    onUrlAvailable("Error: Upload failure: $it")
+                    if (selectedFile != null) {
+                        selectedFile.isUploading = false
+                    }
+                }
+            } else {
+                Log.d(TAG, "ByteArray is empty, file not uploaded")
+                onUrlAvailable("Error: ByteArray is empty")
+                if (selectedFile != null) {
+                    selectedFile.isUploading = false
+                } else {
+                    Log.d(TAG, "Selected file is null")
+                    onUrlAvailable("Error: Selected file is null")
+                }
+            }
+        } ?: run {
+            selectedFile?.let { file ->
+                fileRef.putFile(file.uri).addOnSuccessListener {
+                    fileRef.downloadUrl.addOnSuccessListener { uri ->
+                        val downloadUrl = uri.toString()
+                        selectedFile.url = URL(downloadUrl)
+                        onUrlAvailable(downloadUrl)
+                    }.addOnFailureListener { exception ->
+                        Log.d(TAG, "Upload failure: $exception")
+                        onUrlAvailable("Error: $exception")
+                    }
+                }.addOnFailureListener {
+                    Log.d(TAG, "Upload failure: $it")
+                    onUrlAvailable("Error: Upload failure: $it")
+                }
+            } ?: run {
+                Log.d(TAG, "Selected file is null")
+                onUrlAvailable("Error: Selected file is null")
+            }
+            Log.d(TAG, "Selected file or byteArray is null")
+            onUrlAvailable("Error: Selected file or byteArray is null")
+        }
+    }
+
+
+    fun deleteFile(file: File) {
+
+
+        if (auth.currentUser == null) {
+            Log.d(TAG, "onCreate: ${auth.currentUser}")
+            return
+        }
+
+        val fileRef =
+            firebaseStorage.reference.child("files/${auth.currentUser!!.uid}/${file.name}")
+
+        fileRef.delete().addOnSuccessListener {
+            Log.d(TAG, "File deleted")
+        }.addOnFailureListener {
+            Log.d(TAG, "File not deleted")
+        }
+    }
+
+
+    fun getFilesList(onResult: (List<File>) -> Unit, onError: (Exception) -> Unit) {
+        if (auth.currentUser == null) {
+            Log.d(TAG, "User is null: ${auth.currentUser}")
+            return
+        }
+        val fileRef = firebaseStorage.reference.child("files/${auth.currentUser!!.uid}")
+        fileRef.listAll()
+            .addOnSuccessListener { listResult ->
+                val files = mutableListOf<File>()
+                val itemCount = listResult.items.size
+                var processedCount = 0
+
+                if (itemCount == 0) {
+                    onResult(files)
+                } else {
+                    listResult.items.forEach { storageReference ->
+                        storageReference.metadata.addOnSuccessListener { metadata ->
+                            storageReference.downloadUrl.addOnSuccessListener { uri ->
+                                val name = metadata.name ?: "unknown"
+                                val size = metadata.sizeBytes.toDouble()
+                                val type = metadata.contentType ?: "application/octet-stream"
+                                val newFile = FileManager.createURLFile(uri, name, size, type)
+                                files.add(newFile)
+                                processedCount++
+                                if (processedCount == itemCount) {
+                                    onResult(files)
+                                }
+                            }.addOnFailureListener {
+                                processedCount++
+                                if (processedCount == itemCount) {
+                                    onResult(files)
+                                }
+                            }
+                        }.addOnFailureListener {
+                            processedCount++
+                            if (processedCount == itemCount) {
+                                onResult(files)
+                            }
+                        }
+                    }
+                }
+            }
+            .addOnFailureListener { exception ->
+                onError(exception)
+            }
+    }
 
     fun downloadFile(
         downloadDirectory: String = "${Environment.DIRECTORY_DOWNLOADS}/DocSysNfc",
@@ -72,22 +223,19 @@ class CloudComm(
         callback: (Uri?, String) -> Unit
     ) {
 
-        // Uzyskanie referencji do pliku w Firebase Storage
         val storageRef = firebaseStorage.getReferenceFromUrl(link)
         Log.d(TAG, "storageRef: $storageRef")
 
 
-        // Obsługa metadanych
+
         storageRef.metadata.addOnSuccessListener { metadata ->
             Log.d(TAG, "metadata: $metadata")
 
-            // Tworzenie pliku w katalogu "Downloads"
             val folderName =
-                Environment.DIRECTORY_DOWNLOADS // Użycie publicznego katalogu "Downloads"
+                Environment.DIRECTORY_DOWNLOADS
             val fileName = metadata.name ?: "unknown"
             val mimeType = metadata.contentType ?: "application/octet-stream"
 
-            // Sprawdzenie uprawnień do zapisu
             if (ContextCompat.checkSelfPermission(
                     context,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -225,6 +373,8 @@ class CloudComm(
 
     }
 
+
+
     private fun checkIfFileExists(
         context: Context,
         directory: String,
@@ -246,154 +396,6 @@ class CloudComm(
         return false
     }
 
-
-    fun uploadFile(
-        selectedFile: File?,
-        cipher: Boolean = false,
-        onUrlAvailable: (String) -> Unit
-    ) {
-
-        if (auth.currentUser == null) {
-            Log.d(TAG, "User not logged in")
-            onUrlAvailable("Error: User not logged in")
-            if (selectedFile != null) {
-                selectedFile.isUploading = false
-            }
-            return
-        }
-
-
-        val uniqueID = System.currentTimeMillis().toString()
-        val fileName = if (selectedFile?.name?.contains(".") == true) {
-            val namePart = selectedFile.name.substringBeforeLast(".")
-            val extensionPart = selectedFile.name.substringAfterLast(".")
-            "$namePart-$uniqueID.$extensionPart"
-        } else {
-            "${selectedFile?.name}-$uniqueID"
-        }
-
-        val fileRef =
-            firebaseStorage.reference.child("files/${auth.currentUser!!.uid}/$fileName")
-
-        val byteArray = if (cipher) selectedFile?.encryptedByteArray else null
-        byteArray?.let {
-            if (it.isNotEmpty()) {
-                fileRef.putBytes(it).addOnSuccessListener {
-                    fileRef.downloadUrl.addOnSuccessListener { uri ->
-                        val downloadUrl = uri.toString()
-                        selectedFile?.url = URL(downloadUrl)
-                        onUrlAvailable(downloadUrl)
-                    }.addOnFailureListener { exception ->
-                        Log.d(TAG, "Upload failure: $exception")
-                        onUrlAvailable("Error: $exception")
-                    }
-                }.addOnFailureListener {
-                    Log.d(TAG, "Upload failure: $it")
-                    onUrlAvailable("Error: Upload failure: $it")
-                    if (selectedFile != null) {
-                        selectedFile.isUploading = false
-                    }
-                }
-            } else {
-                Log.d(TAG, "ByteArray is empty, file not uploaded")
-                onUrlAvailable("Error: ByteArray is empty")
-                if (selectedFile != null) {
-                    selectedFile.isUploading = false
-                } else {
-                    Log.d(TAG, "Selected file is null")
-                    onUrlAvailable("Error: Selected file is null")
-                }
-            }
-        } ?: run {
-            selectedFile?.let { file ->
-                fileRef.putFile(file.uri).addOnSuccessListener {
-                    fileRef.downloadUrl.addOnSuccessListener { uri ->
-                        val downloadUrl = uri.toString()
-                        selectedFile.url = URL(downloadUrl)
-                        onUrlAvailable(downloadUrl)
-                    }.addOnFailureListener { exception ->
-                        Log.d(TAG, "Upload failure: $exception")
-                        onUrlAvailable("Error: $exception")
-                    }
-                }.addOnFailureListener {
-                    Log.d(TAG, "Upload failure: $it")
-                    onUrlAvailable("Error: Upload failure: $it")
-                }
-            } ?: run {
-                Log.d(TAG, "Selected file is null")
-                onUrlAvailable("Error: Selected file is null")
-            }
-            Log.d(TAG, "Selected file or byteArray is null")
-            onUrlAvailable("Error: Selected file or byteArray is null")
-        }
-    }
-
-
-    fun deleteFile(file: File) {
-
-
-        if (auth.currentUser == null) {
-            Log.d(TAG, "onCreate: ${auth.currentUser}")
-            return
-        }
-
-        val fileRef =
-            firebaseStorage.reference.child("files/${auth.currentUser!!.uid}/${file.name}")
-
-        fileRef.delete().addOnSuccessListener {
-            Log.d(TAG, "File deleted")
-        }.addOnFailureListener {
-            Log.d(TAG, "File not deleted")
-        }
-    }
-
-
-    fun getFilesList(onResult: (List<File>) -> Unit, onError: (Exception) -> Unit) {
-        if (auth.currentUser == null) {
-            Log.d(TAG, "User is null: ${auth.currentUser}")
-            return
-        }
-        val fileRef = firebaseStorage.reference.child("files/${auth.currentUser!!.uid}")
-        fileRef.listAll()
-            .addOnSuccessListener { listResult ->
-                val files = mutableListOf<File>()
-                val itemCount = listResult.items.size
-                var processedCount = 0
-
-                if (itemCount == 0) {
-                    onResult(files)
-                } else {
-                    listResult.items.forEach { storageReference ->
-                        storageReference.metadata.addOnSuccessListener { metadata ->
-                            storageReference.downloadUrl.addOnSuccessListener { uri ->
-                                val name = metadata.name ?: "unknown"
-                                val size = metadata.sizeBytes.toDouble()
-                                val type = metadata.contentType ?: "application/octet-stream"
-                                val newFile = FileManager.createURLFile(uri, name, size, type)
-                                files.add(newFile)
-                                processedCount++
-                                if (processedCount == itemCount) {
-                                    onResult(files)
-                                }
-                            }.addOnFailureListener {
-                                processedCount++
-                                if (processedCount == itemCount) {
-                                    onResult(files)
-                                }
-                            }
-                        }.addOnFailureListener {
-                            processedCount++
-                            if (processedCount == itemCount) {
-                                onResult(files)
-                            }
-                        }
-                    }
-                }
-            }
-            .addOnFailureListener { exception ->
-                onError(exception)
-            }
-    }
 
 
 }

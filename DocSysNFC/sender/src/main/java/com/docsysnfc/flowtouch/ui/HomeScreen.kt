@@ -67,12 +67,11 @@ import androidx.wear.compose.material.CheckboxDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
-import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationStatus
 import com.docsysnfc.flowtouch.model.File
+import com.docsysnfc.flowtouch.model.TAG
 import com.docsysnfc.flowtouch.model.flowtouchStates.InternetConnectionStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
-import com.docsysnfc.flowtouch.model.TAG
 import com.docsysnfc.flowtouch.ui.theme.appBarColorTheme
 import com.docsysnfc.flowtouch.ui.theme.backgroundColor
 import com.docsysnfc.flowtouch.ui.theme.buttonsColor
@@ -83,7 +82,7 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlin.math.roundToInt
 
 
-//change location of this function
+
 fun setSenderMode(context: Context, isActive: Boolean) {
     context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
         putBoolean("senderMode", isActive)
@@ -102,13 +101,13 @@ fun HomeScreenTopBar(title: String, navController: NavController, viewModel: Mai
             color = whiteColor,
             style = MaterialTheme.typography.titleLarge
         )
-    }, colors = TopAppBarDefaults.smallTopAppBarColors(
+    }, colors = TopAppBarDefaults.topAppBarColors(
         containerColor = appBarColorTheme, titleContentColor = whiteColor
     ), actions = {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End,
-            modifier = Modifier.fillMaxHeight() // Zapewnia, że Row zajmuje całą dostępną wysokość
+            modifier = Modifier.fillMaxHeight()
         ) {
 
             TopBarClickableIcon(navController = navController, viewModel)
@@ -125,7 +124,7 @@ fun TopBarClickableIcon(navController: NavController, viewModel: MainViewModel) 
             modifier = Modifier
                 .size(30.dp)
                 .clickable {
-                    viewModel.setNdefMessage(viewModel.getPublicKey()+R.string.separator.toString()+ FirebaseAuth.getInstance().currentUser?.email.toString())
+                    viewModel.setNdefMessage(viewModel.getPublicKey() + R.string.separator.toString() + FirebaseAuth.getInstance().currentUser?.email.toString())
                     navController.navigate(NFCSysScreen.ShareKeyScreen.name)
                 }
         )
@@ -169,15 +168,9 @@ fun SwipeableTile(
     val showCipherDialog = remember { mutableStateOf(false) }
     val fileIsOnDevice = remember { mutableStateOf(false) }
     val downloadStart = remember { mutableStateOf(false) }
-//    val isUploading = remember { mutableStateOf(file.isUploading) }
+
 
     val uiState by viewModel.uiState.collectAsState()
-
-//    val cloudMirroring = viewModel.cloudMirroring.collectAsState()
-//
-//    val additonalEncrytpion = viewModel.additionalEncryption.collectAsState()
-
-//    val isUploading = viewModel.uploadComplete.collectAsState()
 
 
     if (uiState.uploadComplete) {
@@ -192,20 +185,16 @@ fun SwipeableTile(
     }
 
 
-//    val uploadComplete by viewModel.uploadComplete.collectAsState()
-//    val fileIsDownloading by viewModel.fileIsDownloading.collectAsState()
-
-
     LaunchedEffect(uiState.fileIsDownloading) {
         if (downloadStart.value) {
             viewModel.downloadFile(file.downloadLink, receivesFiles = false)
             downloadStart.value = false
-            fileIsOnDevice.value = true // jak to sie ustawi na true chce wywolac rekompozcyje
+            fileIsOnDevice.value = true
         }
 
     }
     LaunchedEffect(file) {
-        Log.d("nfc123","file: ${file.uri.toString()}")
+        Log.d("nfc123","file: ${file.uri}")
         fileIsOnDevice.value = file.uri.toString() != file.downloadLink
         if (file.type == "binary") {
             isCipher.value = true
@@ -348,7 +337,7 @@ fun SwipeableTile(
 
 
                     Icon(painter = painterResource(id = getIconFile(file)),
-                        contentDescription = "plik",
+                        contentDescription = stringResource(id = R.string.file),
                         modifier = Modifier.graphicsLayer {
                             alpha = 0.8f
                             scaleX = 0.8f
@@ -417,13 +406,7 @@ fun SwipeableTile(
 
             Button(
                 onClick = {
-
-                    Log.d(TAG, "linkztondhuehui: ${file.url}")
-                    Log.d("nfc123", "linkztondhuehui: ${uiState.modelSelectedFiles.size}")
-                    Log.d("nfc123", "linkztondhuehui: ${uiState.modelSelectedFiles[0].url}")
-
                     viewModel.pushFileIntoCloud(file, isCipher.value)
-
                 },
                 modifier = Modifier
                     .padding(16.dp)
@@ -468,8 +451,6 @@ fun ChooseFileButton(
 fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: Context) {
 
     val uiState by viewModel.uiState.collectAsState()
-//    val authenticationState by viewModel.authenticationState.collectAsState()
-
 
     viewModel.checkKey()
 
@@ -478,18 +459,10 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
     LaunchedEffect(Unit, viewModel) {
 
-       if(uiState.authenticationStatus == AuthenticationStatus.FAILURE || uiState.authenticationStatus == AuthenticationStatus.UNKNOWN) {
-          // navController.navigate(NFCSysScreen.Login.name)
-       }
 
         viewModel.checkNFCStatus()
         viewModel.checkInternetStatus(context = context)
     }
-
-
-//    val nfcStatus by viewModel.nfcStatus.collectAsState()
-
-//    val internetConnectionStatus by viewModel.internetConnStatus.collectAsState()
 
 
     when (uiState.nfcStatus) {
@@ -506,7 +479,7 @@ fun HomeScreen(navController: NavController, viewModel: MainViewModel, context: 
 
         NFCStatus.NotSupported -> {
 
-            Log.d(TAG, "notsupported")
+            Log.d(TAG, "not supported")
             NFCNotSupportedDialog()
         }
 
@@ -707,7 +680,6 @@ fun PromptToNoInternetConnectionDialog() {
 @Composable
 fun Filters(
     viewModel: MainViewModel,
-    modifier: Modifier = Modifier
 ) {
 
     val isDropdownExpanded = remember { mutableStateOf(false) }

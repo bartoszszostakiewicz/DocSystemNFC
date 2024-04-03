@@ -90,5 +90,11 @@
     <string name="cloud_mirroring_off">Cloud mirroring off.</string>
     <string name="file_already_added">File already added.</string>
     <string name="file_exist">File already exist.</string>
+    <string name="file">File</string>
+    <string name="already_get">is already on device.</string>
+    <string name="file_info">File informations</string>
+    <string name="refreshed">was refreshed.</string>
+    <string name="file_is_encrypted">File is encryptet.</string>
+    <string name="file_is_not_encrypted">File is not encryptet.</string>
 </resources>
 

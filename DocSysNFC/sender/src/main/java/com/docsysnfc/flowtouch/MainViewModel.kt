@@ -17,19 +17,18 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.docsysnfc.R
-import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationStatus
 import com.docsysnfc.flowtouch.model.CloudComm
-import com.docsysnfc.flowtouch.model.flowtouchStates.CreateAccountStatus
 import com.docsysnfc.flowtouch.model.File
 import com.docsysnfc.flowtouch.model.FileManager
-import com.docsysnfc.flowtouch.model.flowtouchStates.InternetConnectionStatus
 import com.docsysnfc.flowtouch.model.NFCComm
+import com.docsysnfc.flowtouch.model.SecurityManager
+import com.docsysnfc.flowtouch.model.flowtouchStates.AuthenticationStatus
+import com.docsysnfc.flowtouch.model.flowtouchStates.CreateAccountStatus
+import com.docsysnfc.flowtouch.model.flowtouchStates.InternetConnectionStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCStatus
 import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
-import com.docsysnfc.flowtouch.model.SecurityManager
 import com.docsysnfc.flowtouch.model.flowtouchStates.UiState
 import com.google.firebase.auth.EmailAuthProvider
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,11 +47,8 @@ class MainViewModel(
     @SuppressLint("StaticFieldLeak")
     private val context = getApplication<Application>().applicationContext
 
-
-    private val fileManager = FileManager()
     private val cloudComm = CloudComm()
     private val securityManager = SecurityManager()
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
     @SuppressLint("StaticFieldLeak")
     private val nfcComm = NFCComm()
@@ -66,7 +62,7 @@ class MainViewModel(
 
         nfcComm.initNFCAdapter(context)
         initFilesFromFirebaseStorage()
-        if (auth.currentUser != null) {
+        if (cloudComm.getAuthInstance().currentUser != null) {
             _uiState.update { it.copy(authenticationStatus = AuthenticationStatus.SUCCESS) }
         }
 
@@ -84,11 +80,19 @@ class MainViewModel(
 
     fun setAdditionalEncryption(value: Boolean) {
         val newValue = if (value) {
-            Toast.makeText(context, context.getString(R.string.additional_encryption_on), Toast.LENGTH_SHORT)
+            Toast.makeText(
+                context,
+                context.getString(R.string.additional_encryption_on),
+                Toast.LENGTH_SHORT
+            )
                 .show()
             true
         } else {
-            Toast.makeText(context, context.getString(R.string.additional_encryption_off), Toast.LENGTH_SHORT)
+            Toast.makeText(
+                context,
+                context.getString(R.string.additional_encryption_off),
+                Toast.LENGTH_SHORT
+            )
                 .show()
             false
         }
@@ -98,15 +102,22 @@ class MainViewModel(
 
     fun setCloudMirroring(value: Boolean) {
         val newValue = if (value) {
-            Toast.makeText(context, context.getString(R.string.cloud_mirroring_on), Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.cloud_mirroring_on),
+                Toast.LENGTH_SHORT
+            ).show()
             true
         } else {
-            Toast.makeText(context, context.getString(R.string.cloud_mirroring_off), Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.cloud_mirroring_off),
+                Toast.LENGTH_SHORT
+            ).show()
             false
         }
         _uiState.update { it.copy(cloudMirroring = newValue) }
     }
-
 
 
     private fun markFileAsUploaded(file: File) {
@@ -120,16 +131,16 @@ class MainViewModel(
 
 
     fun logOff() {
-        FirebaseAuth.getInstance().signOut()
+        cloudComm.getAuthInstance().signOut()
         _uiState.update { it.copy(authenticationStatus = AuthenticationStatus.UNKNOWN) }
     }
 
     fun setFileIsCipher(isCipher: Boolean) {
         val newCipher = if (isCipher) {
-            Toast.makeText(context, "Plik jest zaszyfrowany", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.file_is_encrypted), Toast.LENGTH_SHORT).show()
             true
         } else {
-            Toast.makeText(context, "Plik nie jest zaszyfrowany", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.file_is_not_encrypted), Toast.LENGTH_SHORT).show()
             false
         }
         _uiState.compareAndSet(
@@ -141,7 +152,7 @@ class MainViewModel(
 
     fun addFile(uri: Uri) {
         viewModelScope.launch {
-            val newFile = fileManager.toFile(uri, context)
+            val newFile = FileManager.toFile(uri, context)
             var fileName = newFile.name
             var fileExtension = ""
             val dotIndex = newFile.name.lastIndexOf('.')
@@ -173,7 +184,11 @@ class MainViewModel(
                 }
 
                 if (isFileAlreadyAdded) {
-                    Toast.makeText(context, context.getString(R.string.file_already_added), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.file_already_added),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
 
                 currentState.copy(modelSelectedFiles = currentList)
@@ -203,22 +218,23 @@ class MainViewModel(
             _uiState.update { it.copy(authenticationStatus = AuthenticationStatus.FAILURE) }
 
         } else {
-            auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-                val newAuthStatus = if (task.isSuccessful) {
-                    Log.d(TAG, "signInWithEmail:success")
-                    AuthenticationStatus.SUCCESS
-                } else {
-                    Log.d(TAG, "signInWithEmail:failure", task.exception)
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.invalid_credentials),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    AuthenticationStatus.FAILURE
-                }
+            cloudComm.getAuthInstance().signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    val newAuthStatus = if (task.isSuccessful) {
+                        Log.d(TAG, "signInWithEmail:success")
+                        AuthenticationStatus.SUCCESS
+                    } else {
+                        Log.d(TAG, "signInWithEmail:failure", task.exception)
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.invalid_credentials),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        AuthenticationStatus.FAILURE
+                    }
 
-                _uiState.update { it.copy(authenticationStatus = newAuthStatus) }
-            }
+                    _uiState.update { it.copy(authenticationStatus = newAuthStatus) }
+                }
         }
     }
 
@@ -228,7 +244,7 @@ class MainViewModel(
         val newAuthStatus = if (email.isEmpty() || password.isEmpty()) {
             CreateAccountStatus.FAILURE
         } else {
-            auth.createUserWithEmailAndPassword(email, password)
+            cloudComm.getAuthInstance().createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener {
                     if (it.isSuccessful) {
                         Log.d(TAG, "createUserWithEmail:success")
@@ -317,7 +333,7 @@ class MainViewModel(
             file.uri = fileUri
             file.byteArray = fileByteArray
             file.size = fileSize
-            file.type = mimeType.toString()
+            file.type = mimeType
             file.url = URL("https://www.google.com")
 
 
@@ -326,16 +342,17 @@ class MainViewModel(
                 uri = fileUri,
                 byteArray = fileByteArray,
                 size = fileSize,
-                type = mimeType.toString(),
+                type = mimeType,
                 url = URL("https://www.google.com")
             )
 
 
 
             Log.d(
-                "NFC123",
-                "Tworzenie obiektu File: ${file.name}, Rozmiar: ${file.size} MB"
+                TAG,
+                "Creating File object: ${file.name}, Size: ${file.size} MB"
             )
+
 
             _uiState.update { currentState ->
                 currentState.copy(
@@ -344,21 +361,19 @@ class MainViewModel(
                 )
             }
 
-
-            Log.d(TAG, "Aktualizacja otrzymanych plików: ${file.name}")
+            Log.d(TAG, "Updating received files: ${file.name}")
         }
 
     }
 
-    suspend fun downloadFile(downloadLink: String, receivesFiles: Boolean = true) {
+    fun downloadFile(downloadLink: String, receivesFiles: Boolean = true) {
 
         val separator = R.string.separator.toString()
         val parts = downloadLink.split(separator)
 
         Log.d(TAG, "Parts: $parts")
-        Log.d(TAG, "Rozpoczęcie pobierania pliku: $downloadLink")
+        Log.d(TAG, "Start downloading file: $downloadLink")
 
-        // Ustawienie stanu 'fileIsDownloading' na true
         _uiState.update { it.copy(fileIsDownloading = true) }
 
         cloudComm.downloadFile(
@@ -367,17 +382,17 @@ class MainViewModel(
             context = context
         ) { fileUri, mimeType ->
             if (fileUri == null) {
-                Log.e("NFC123", "Nie udało się pobrać pliku, fileUri jest null.")
+                Log.e(TAG, "Failed to download file, fileUri is null.")
                 _uiState.update { it.copy(fileIsDownloading = false) }
                 return@downloadFile
             }
 
-            Log.d(TAG, "Pobrany plik Uri: $fileUri, Typ MIME: $mimeType")
+            Log.d(TAG, "Downloaded file Uri: $fileUri, MIME Type: $mimeType")
 
             val fileName =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                     FileManager.getNameFile(context, fileUri, extension = true).also {
-                        Log.d(TAG, "Nazwa pliku (API >= Q): $it")
+                        Log.d(TAG, "File name (API >= Q): $it")
                     }
                 } else {
                     fileUri.lastPathSegment ?: "unknown"
@@ -391,35 +406,29 @@ class MainViewModel(
 
             var cnt = 0
 
-            Log.d(TAG, "przed: $fileSize")
-
-            Log.d(TAG, "FILE URI: $fileUri")
-
             while (fileSize == 0.0 && cnt < 1000) {
                 cnt++
                 fileSize =
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                         FileManager.getSizeOfFileFromContentUri(context, fileUri).also {
-                            //                    Thread.sleep(10)
-                            Log.d(TAG, "Rozmiar pliku (API >= Q): $it MB")
+                            Log.d(TAG, "File size (API >= Q): $it MB")
                         }
                     } else {
                         FileManager.getSizeFileFromFileUri(fileUri).also {
-                            Log.d(TAG, "Rozmiar pliku (API < Q): $it MB")
+                            Log.d(TAG, "File size (API < Q): $it MB")
                         }
                     }
             }
-            Log.d(TAG, "cnt: $cnt")
+            Log.d(TAG, "Collision counter: $cnt")
 
-            Log.d(TAG, "pozyskany rozmiar pliku: $fileSize")
-
+            Log.d(TAG, "Obtained file size: $fileSize")
 
             val downloadedFile = File(
                 fileName,
                 fileUri,
                 downloadLink,
                 fileSize,
-                mimeType.toString(),
+                mimeType,
                 URL("https://www.google.com"),
                 fileByteArray,
                 ByteArray(0),
@@ -437,10 +446,6 @@ class MainViewModel(
                 downloadedFile.isCipher = true
             }
 
-            Log.d(
-                TAG,
-                "Tworzenie obiektu File: ${downloadedFile.name}, Rozmiar: ${downloadedFile.size} MB"
-            )
             if (receivesFiles) {
                 _uiState.update { currentState ->
                     currentState.copy(
@@ -456,16 +461,13 @@ class MainViewModel(
                     )
                 }
             }
-            Log.d(TAG, "Aktualizacja otrzymanych plików: ${downloadedFile.name}")
+            Log.d(TAG, "Updating received files: ${downloadedFile.name}")
+
         }
     }
 
     private fun updateSelectedFiles(newFile: File) {
         _uiState.update { currentState ->
-            Log.d(TAG, "Nazwa dodawanego pliku: ${newFile.name}")
-            Log.d(TAG, "Uri dodawanego pliku: ${newFile.uri}")
-            Log.d(TAG, "DŁUGOŚĆ TABLICY: ${newFile.byteArray.size}")
-
 
             val nameWithoutExtension = newFile.name.substringBeforeLast(".")
             val extension = newFile.name.substringAfterLast(".", "")
@@ -482,16 +484,19 @@ class MainViewModel(
 
             if (newName != newFile.name) {
                 newFile.name = newName
-                Log.d(TAG, "Zmieniono nazwę na: $newName")
             }
 
-            // Aktualizacja plików
+
             val updatedFiles = currentState.modelSelectedFiles.map { existingFile ->
                 if (existingFile.downloadLink == newFile.downloadLink) {
 
                     Toast.makeText(
                         context,
-                        "Informacje o pliku ${newFile.name} zostały zaktualizowane.",
+                        "${context.getString(R.string.file_info)} ${newFile.name} ${
+                            context.getString(
+                                R.string.refreshed
+                            )
+                        }",
                         Toast.LENGTH_LONG
                     ).show()
                     existingFile.apply {
@@ -538,7 +543,7 @@ class MainViewModel(
                 if (currentState.receivesFiles.any { it.downloadLink == newFile.downloadLink }) {
                     Toast.makeText(
                         context,
-                        "Plik ${newFile.name} jest już otrzymany.",
+                        "${context.getString(R.string.file)} ${newFile.name} ${context.getString(R.string.already_get)}",
                         Toast.LENGTH_LONG
                     ).show()
                     currentState.receivesFiles.map { existingFile ->
@@ -546,7 +551,11 @@ class MainViewModel(
 
                             Toast.makeText(
                                 context,
-                                "Informacje o pliku ${newFile.name} zostały zaktualizowane.",
+                                "${context.getString(R.string.file_info)} ${newFile.name} ${
+                                    context.getString(
+                                        R.string.refreshed
+                                    )
+                                }",
                                 Toast.LENGTH_LONG
                             ).show()
 
@@ -624,7 +633,7 @@ class MainViewModel(
     fun handleEncryption(file: File, encryption: Boolean, reading: Boolean = false) {
         viewModelScope.launch {
 
-            Log.d(TAG, "Plik ${file.name}: ${file.byteArray.size} bajtów")
+            Log.d(TAG, "File ${file.name}: ${file.byteArray.size} bytes")
 
 
             if (encryption && file.encryptedByteArray.isEmpty()) {
@@ -642,7 +651,7 @@ class MainViewModel(
                 Log.d(TAG, "First ten bytes of encrypted data: ${file.encryptedByteArray.take(10)}")
                 Log.d(TAG, "IV LEN ${file.iV.length} ")
                 Log.d(TAG, "Data LEN  = ${file.encryptedByteArray.size}")
-                Log.d(TAG, "IV = ${file.iV.toString()}")
+                Log.d(TAG, "IV = ${file.iV}")
                 Log.d(TAG, "${file.iV} ${file.secretKey}  ${file.encryptedByteArray}")
 
 
@@ -674,12 +683,8 @@ class MainViewModel(
                 if (decodedKey.size == 256) {
                     securityManager.decryptDataRSA(
                         decodedKey,
-                        auth.currentUser?.email.toString()
+                        cloudComm.getAuthInstance().currentUser?.email.toString()
                     ) { decryptedKey ->
-                        Log.d(TAG, "decryptet Key ${decryptedKey}")
-                        val base64String = Base64.getEncoder().encodeToString(decryptedKey)
-                        Log.d(TAG, "decrypted Key: $base64String")
-
                         decodedKey = decryptedKey
                     }
                 }
@@ -723,7 +728,7 @@ class MainViewModel(
                     file.encryptionState = false
                     val endTime = System.currentTimeMillis()
                     val duration = endTime - startTime
-                    Log.d(TAG, "Czas operacji deszyfrowania: $duration ms")
+                    Log.d(TAG, "Decryption operation time: $duration ms")
 
                 } else {
                     Log.d(TAG, "Invalid key $decodedKey")
@@ -797,8 +802,11 @@ class MainViewModel(
 
     fun reauthenticateAndDelete(password: String, onResult: (Boolean) -> Unit) {
         val credential =
-            EmailAuthProvider.getCredential(auth.currentUser?.email.toString(), password)
-        auth.currentUser?.reauthenticate(credential)
+            EmailAuthProvider.getCredential(
+                cloudComm.getAuthInstance().currentUser?.email.toString(),
+                password
+            )
+        cloudComm.getAuthInstance().currentUser?.reauthenticate(credential)
             ?.addOnCompleteListener { reauthTask ->
                 if (reauthTask.isSuccessful) {
                     Log.d(TAG, "Re-authentication successful")
@@ -814,7 +822,7 @@ class MainViewModel(
 
     private fun deleteAccount() {
 
-        auth.currentUser?.delete()?.addOnCompleteListener { task ->
+        cloudComm.getAuthInstance().currentUser?.delete()?.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 Log.d(TAG, "deleteAccount:success")
             } else if (task.exception is FirebaseAuthRecentLoginRequiredException) {
@@ -866,7 +874,7 @@ class MainViewModel(
     }
 
     fun checkKey() {
-        securityManager.checkKey(auth.currentUser?.email.toString())
+        securityManager.checkKey(cloudComm.getAuthInstance().currentUser?.email.toString())
     }
 
     fun toggleEncryption() {
@@ -877,7 +885,7 @@ class MainViewModel(
 
 
     fun getPublicKey(): String {
-        return securityManager.getPublicKey(auth.currentUser?.email.toString())
+        return securityManager.getPublicKey(cloudComm.getAuthInstance().currentUser?.email.toString())
 
     }
 

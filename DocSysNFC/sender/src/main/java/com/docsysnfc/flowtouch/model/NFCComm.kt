@@ -17,8 +17,8 @@ import java.io.UnsupportedEncodingException
 import java.math.BigInteger
 
 
-class NFCComm(
-) : HostApduService() {
+class NFCComm
+    : HostApduService() {
 
 
     private val vibrationEffect: VibrationEffect =
@@ -28,6 +28,8 @@ class NFCComm(
 
     private var nfcAdapter: NfcAdapter? = null
     private var vibrator: Vibrator? = null
+
+    //move this command to other file
 
     private val applicationSelect = listOf(
         0x00, 0xA4, 0x04, 0x00, 0x07, 0xD2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x01, 0x00
@@ -161,8 +163,8 @@ class NFCComm(
             }
 
             commandApdu.sliceArray(0..1).contentEquals(ndefReadBinary) -> {
-                var offset = 0
-                var length = 1000
+                var offset: Int
+                var length: Int
                 try {
                     offset = commandApdu.sliceArray(2..3).toHex().toInt(16)
                     length = commandApdu.sliceArray(4..4).toHex().toInt(16)
@@ -199,20 +201,17 @@ class NFCComm(
                 if (vibrator == null) {
                     vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                     vibrator?.vibrate(vibrationEffect)
-                    Log.d(TAG, "vibrator on")
+                    Log.d(TAG, "Vibrator on")
                 } else {
                     vibrator?.vibrate(vibrationEffect)
-                    Log.d(TAG, "vibrator on")
+                    Log.d(TAG, "Vibrator on")
                 }
 
                 response
-            }
-
-            else -> {
+            }else -> {
                 Log.d(TAG, "unknown commandApdu")
                 error
             }
-
         }
 
         return response

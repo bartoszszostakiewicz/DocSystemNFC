@@ -2,12 +2,6 @@ package com.docsysnfc.flowtouch.ui
 
 import android.app.Activity
 import android.content.Context
-import android.nfc.tech.Ndef
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.util.Log
-import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -37,7 +31,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,24 +43,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
 import androidx.navigation.NavController
 import com.docsysnfc.R
 import com.docsysnfc.flowtouch.MainViewModel
 import com.docsysnfc.flowtouch.model.File
-import com.docsysnfc.flowtouch.model.flowtouchStates.NFCSysScreen
 import com.docsysnfc.flowtouch.ui.theme.backgroundColor
 import com.docsysnfc.flowtouch.ui.theme.buttonsColor
 import com.docsysnfc.flowtouch.ui.theme.deleteButtonsColor
 import com.docsysnfc.flowtouch.ui.theme.tilesColor
-import java.nio.charset.Charset
 
-fun updateNfcDataCipher(context: Context, isActive: Boolean) {
-    context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).edit {
-        putBoolean("isCipher", isActive)
-        apply()
-    }
-}
 
 fun getIconFile(file: File): Int {
 
@@ -99,7 +83,6 @@ fun SendScreen(
     index: Int
 ) {
 
-
     val uiState by viewModel.uiState.collectAsState()
 
 
@@ -108,11 +91,9 @@ fun SendScreen(
     val file = remember { uiState.modelSelectedFiles[index] }
 
 
-    // Efekt uboczny do wyświetlania dialogu
     LaunchedEffect(uiState.additionalEncryption) {
         showEncryptionDialog = uiState.additionalEncryption
     }
-
 
 
 
@@ -156,33 +137,9 @@ fun SendScreen(
 
         )
     }
-
-    //sender mode
     if ((uiState.additionalEncryption && uiState.publicKey.isNotEmpty()) || !uiState.additionalEncryption) {
 
-//        val activeUrl = viewModel.activeURL.collectAsState()
         viewModel.disableNFCReaderMode(context as Activity)
-
-        if (uiState.additionalEncryption) {
-            //invoked cipher session key :)))
-            //cipher key using public key
-//            val encodedKeySecret = java.util.Base64.getDecoder().decode(file.secretKey)
-//
-//            viewModel.encryptDataRSA(encodedKeySecret, file.publicKey) { encryptedKey ->
-//                // Ta część kodu zostanie wykonana, gdy operacja encryptDataRSA zostanie ukończona
-//
-//                val base64EncryptedKey = java.util.Base64.getEncoder().encodeToString(encryptedKey)
-//                file.secretKey = base64EncryptedKey
-//                Log.d("NFC123", "Encrypted key: $base64EncryptedKey")
-//
-//                Log.d("nfc123", "active url before update: ${activeUrl.value}")
-//                viewModel.updateActiveURL(file)
-//                Log.d("nfc123", "active url after update: ${activeUrl.value}")
-        }
-
-
-        var isCipher by rememberSaveable { mutableStateOf(false) }
-
 
         val animate by remember { mutableStateOf(/*viewModel.fileIsInCloud(file)*/ false) }
 
